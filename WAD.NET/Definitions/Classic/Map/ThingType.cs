@@ -1,6 +1,6 @@
-﻿namespace WAD.NET.Enums
+﻿namespace WAD.NET.Definitions.Classic.Map
 {
-    public enum Thing
+    public enum ThingType
     {
         PLAYER = 0,
 

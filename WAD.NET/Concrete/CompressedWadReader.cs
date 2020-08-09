@@ -16,10 +16,21 @@ namespace WAD.NET.Concrete
     /// </remarks>
     public class CompressedWadReader: IWadReader
     {
+        private string _sourceWadName;
         private BinaryReader _reader { get; set; }
 
+        
+        public CompressedWadReader(string filePath)
+        {
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException();
+            }
+            _sourceWadName = Path.GetFileName(filePath);
+            _reader = new BinaryReader(File.OpenRead(filePath));
+        }
 
-        public CompressedWadReader(Stream input, Encoding encoding = null, bool leaveOpen = false)
+        public CompressedWadReader(Stream input, Encoding encoding = null, bool leaveOpen = false, string wadName = null)
         {
             if (encoding == null)
             {
@@ -49,7 +60,7 @@ namespace WAD.NET.Concrete
                 }
                 var lastPostion = _reader.BaseStream.Position;
                 _reader.BaseStream.Seek(lumpPtr, SeekOrigin.Begin);
-                var lump = LumpFactory.GenerateLumpFromData(new String(lumpNameChars), _reader.ReadBytes(lumpSize));
+                var lump = new BinaryLump(new string(lumpNameChars), _sourceWadName, _reader.ReadBytes(lumpSize));
                 wad.Lumps.Enqueue(lump);
                 _reader.BaseStream.Seek(lastPostion, SeekOrigin.Begin);
             }
@@ -59,7 +70,7 @@ namespace WAD.NET.Concrete
 
         private WadType GetWadFileType()
         {
-            var wadType = new String(_reader.ReadChars(4));
+            var wadType = new string(_reader.ReadChars(4));
             if (wadType.StartsWith("PK") || wadType.StartsWith("ZIP"))
             {
                 throw new FormatException($"Cannot use WadReader to read compressed data. Use CompressedWadReader instead.");

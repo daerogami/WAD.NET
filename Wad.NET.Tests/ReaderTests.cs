@@ -3,6 +3,7 @@ using WAD.NET.Concrete;
 using System.IO;
 using WAD.NET.Enums;
 using System;
+using System.Linq;
 
 namespace WAD.NET.Tests
 {
@@ -13,10 +14,11 @@ namespace WAD.NET.Tests
         [Fact]
         public void ICanSuccessfullyReadTheDoomIWADFile()
         {
+            const string wadName = "DOOM.WAD";
             Wad wad;
 
-            using (var fileStream = File.OpenRead($"{TestWadLocation}DOOM.WAD"))
-            using (var reader = new WadReader(fileStream))
+            using (var fileStream = File.OpenRead($"{TestWadLocation}{wadName}"))
+            using (var reader = new WadReader(fileStream, wadName: wadName))
             {
                 wad = reader.ReadWad();
             };
@@ -28,9 +30,10 @@ namespace WAD.NET.Tests
         [Fact]
         public void ICanSuccessfullyReadTheDoom2IWADFile()
         {
+            const string wadName = "DOOM2.WAD";
             Wad wad;
 
-            using (var fileStream = File.OpenRead($"{TestWadLocation}DOOM2.WAD"))
+            using (var fileStream = File.OpenRead($"{TestWadLocation}{wadName}"))
             using (var reader = new WadReader(fileStream))
             {
                 wad = reader.ReadWad();
@@ -43,10 +46,26 @@ namespace WAD.NET.Tests
         [Fact]
         public void ThrowFormatExceptionWhenReadingACompressedFile()
         {
-            using (var fileStream = File.OpenRead($"{TestWadLocation}rdeimosa.zip"))
+            const string wadName = "rdeimosa.zip";
+            using (var fileStream = File.OpenRead($"{TestWadLocation}{wadName}"))
             using (var reader = new WadReader(fileStream))
             {
-                Assert.Throws<FormatException>(()=> reader.ReadWad());
+                Assert.Throws<FormatException>(() => reader.ReadWad());
+            };
+        }
+
+        [Fact]
+        public void TestFile()
+        {
+            const string wadName = "3ha3.wad";
+            Wad wad;
+
+            using (var fileStream = File.OpenRead($@"{TestWadLocation}{wadName}"))
+            using (var reader = new WadReader(fileStream))
+            {
+                wad = reader.ReadWad();
+                var thatSong = wad.Lumps.Single(x => x.Name == "D_OPENIN") as MusicLump;
+                //File.WriteAllBytes(@"C:/Users/markj/Desktop/d_openin.mid", thatSong.MusicData);
             };
         }
     }

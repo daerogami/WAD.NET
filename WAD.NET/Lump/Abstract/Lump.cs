@@ -1,8 +1,17 @@
-﻿namespace WAD.NET.Abstract
+﻿using WAD.NET.Interfaces;
+
+namespace WAD.NET.Abstract
 {
-    public abstract class Lump
+    public abstract class Lump : ILump
     {
-        public string Name { get; set; }
-        public string SourceWad { get; set; }
+        public string Name { get; }
+        public string SourceWad { get; }
+
+
+        public Lump(string lumpName, string sourceWadFileName)
+        {
+            Name = lumpName;
+            SourceWad = sourceWadFileName;
+        }
     }
 }

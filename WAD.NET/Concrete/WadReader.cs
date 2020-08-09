@@ -17,10 +17,22 @@ namespace WAD.NET.Concrete
     /// </remarks>
     public class WadReader : IWadReader
     {
+        private string _sourceWadName;
         private BinaryReader _reader { get; set; }
+        private bool _readingFlats;
 
 
-        public WadReader(Stream input, Encoding encoding = null, bool leaveOpen = false)
+        public WadReader(string filePath)
+        {
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException();
+            }
+            _sourceWadName = Path.GetFileName(filePath);
+            _reader = new BinaryReader(File.OpenRead(filePath));
+        }
+
+        public WadReader(Stream input, Encoding encoding = null, bool leaveOpen = false, string wadName = null)
         {
             if (encoding == null)
             {
@@ -31,7 +43,10 @@ namespace WAD.NET.Concrete
 
         public Wad ReadWad()
         {
-            var wad = new Wad();
+            var _wad = new Wad
+            {
+                Name = _sourceWadName
+            };
 
             var wadType = GetWadFileType();
             var directoryCount = _reader.ReadInt32();
@@ -39,21 +54,21 @@ namespace WAD.NET.Concrete
             _reader.BaseStream.Seek(directoryLocationPtr, SeekOrigin.Begin);
             for (var i = 0; i < directoryCount; i++)
             {
-                var (ptr, size, name) = GetNextLump();
+                var (offset, size, name) = GetNextLumpInfo();
                 if (size == 0)
                 {
-                    HandleMarkerLump(wad, new String(name));
+                    HandleMarkerLump(_wad, name);
                 }
                 else
                 {
-                    HandleGenericLump(wad, ptr, new String(name), size);
+                    HandleDataLump(_wad, offset, name, size);
                 }
             }
 
-            return wad;
+            return _wad;
         }
 
-        private (int ptr, int size, char[] name) GetNextLump()
+        private (int offset, int size, string name) GetNextLumpInfo()
         {
             var lumpPtr = _reader.ReadInt32();
             var lumpSize = _reader.ReadInt32();
@@ -64,15 +79,71 @@ namespace WAD.NET.Concrete
                 //https://doomwiki.org/wiki/WAD#Compression
                 throw new NotImplementedException("Lump Uses LZSS Compression");
             }
+            var lumpNameAsString = new string(lumpNameChars);
 
-            return (lumpPtr, lumpSize, lumpNameChars);
+            return (lumpPtr, lumpSize, lumpNameAsString);
         }
 
-        private void HandleGenericLump(Wad wad, int lumpPtr, string lumpName, int lumpSize)
+        private void HandleDataLump(Wad wad, int lumpPtr, string lumpName, int lumpSize)
         {
             var lastPostion = _reader.BaseStream.Position;
             _reader.BaseStream.Seek(lumpPtr, SeekOrigin.Begin);
-            var lump = LumpFactory.GenerateBinaryLumpFromData(lumpName, _reader.ReadBytes(lumpSize));
+            var data = _reader.ReadBytes(lumpSize);
+            ILump lump;
+            if (_readingFlats)
+            {
+                lump = new FlatLump(lumpName, _sourceWadName);
+            }
+            else if (lumpName.Equals("PLAYPAL"))
+            {
+                lump = new PaletteLump(lumpName, _sourceWadName);
+            }
+            else if (lumpName.Equals("DEMO1") || lumpName.Equals("DEMO2") || lumpName.Equals("DEMO3"))
+            {
+                lump = new DemoLump(lumpName, _sourceWadName);
+            }
+            else if (lumpName.Equals("TEXTURE1") || lumpName.Equals("TEXTURE2"))
+            {
+                lump = new TextureListLump(lumpName, _sourceWadName);
+            }
+            else if (lumpName.Equals("PNAMES"))
+            {
+                lump = new WallPatchLump(lumpName, _sourceWadName);
+            }
+            else if (lumpName.Equals("GENMIDI"))
+            {
+                lump = new MidiLump(lumpName, _sourceWadName);
+            }
+            else if (lumpName.StartsWith("DMXGUS"))
+            {
+                lump = new GravisLump(lumpName, _sourceWadName, data.ToString());
+            }
+            else if (lumpName.StartsWith("DP"))
+            {
+                lump = new SpeakerEffectsLump(lumpName, _sourceWadName);
+            }
+            else if (lumpName.StartsWith("DS"))
+            {
+                lump = new SoundEffectsLump(lumpName, _sourceWadName);
+            }
+            else if (lumpName.StartsWith("D_"))
+            {
+                lump = new MusicLump(lumpName, _sourceWadName, data);
+            }
+            else if (lumpName.Equals("F_START"))
+            {
+                _readingFlats = true;
+                return;
+            }
+            else if (lumpName.Equals("F_END"))
+            {
+                _readingFlats = false;
+                return;
+            }
+            else
+            {
+                lump = new BinaryLump(lumpName, _sourceWadName, data); // Other Graphics?
+            }
             wad.Lumps.Enqueue(lump);
             _reader.BaseStream.Seek(lastPostion, SeekOrigin.Begin);
         }
@@ -84,8 +155,8 @@ namespace WAD.NET.Concrete
 
         private WadType GetWadFileType()
         {
-            var wadType = new String(_reader.ReadChars(4));
-            if (wadType.StartsWith("PK") || wadType.StartsWith("ZIP"))
+            var wadType = new string(_reader.ReadChars(4));
+            if (wadType.StartsWith("PK") || wadType.StartsWith("ZIP") || wadType.StartsWith("7z"))
             {
                 throw new FormatException($"Cannot use WadReader to read compressed data. Use CompressedWadReader instead.");
             }
