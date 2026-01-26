@@ -2,8 +2,10 @@ using System;
 using System.IO;
 using System.Text;
 using WAD.NET.Abstract;
+using WAD.NET.Concrete.Maps;
 using WAD.NET.Enums;
 using WAD.NET.Interfaces;
+using WAD.NET.Maps;
 
 namespace WAD.NET.Concrete
 {
@@ -251,16 +253,39 @@ namespace WAD.NET.Concrete
             // Named lump types
             return name switch
             {
+                // Resource lumps
                 "PLAYPAL" => new PaletteLump(name, _sourceWadName, data),
                 "COLORMAP" => new ColorMapLump(name, _sourceWadName, data),
                 "PNAMES" => new PatchNamesLump(name, _sourceWadName, data),
                 "TEXTURE1" or "TEXTURE2" => new TextureLump(name, _sourceWadName, data),
                 "GENMIDI" => new MidiLump(name, _sourceWadName),
                 "DMXGUS" or "DMXGUSC" => new GravisLump(name, _sourceWadName, Encoding.ASCII.GetString(data)),
+
+                // Map lumps (binary format)
+                "THINGS" => new ThingsLump(name, _sourceWadName, data),
+                "LINEDEFS" => new LinedefsLump(name, _sourceWadName, data),
+                "SIDEDEFS" => new SidedefsLump(name, _sourceWadName, data),
+                "VERTEXES" => new VertexesLump(name, _sourceWadName, data),
+                "SEGS" => new SegsLump(name, _sourceWadName, data),
+                "SSECTORS" => new SubsectorsLump(name, _sourceWadName, data),
+                "NODES" => new NodesLump(name, _sourceWadName, data),
+                "SECTORS" => new SectorsLump(name, _sourceWadName, data),
+                "REJECT" => new RejectLump(name, _sourceWadName, data),
+                "BLOCKMAP" => new BlockmapLump(name, _sourceWadName, data),
+                "BEHAVIOR" => new BehaviorLump(name, _sourceWadName, data),
+
+                // UDMF map lumps
+                "TEXTMAP" => new TextMapLump(name, _sourceWadName, data),
+
+                // Prefix-based lumps
                 _ when name.StartsWith("DEMO") => new DemoLump(name, _sourceWadName),
                 _ when name.StartsWith("DP") => new SpeakerEffectsLump(name, _sourceWadName),
                 _ when name.StartsWith("DS") => CreateSoundLump(name, data),
                 _ when name.StartsWith("D_") => new MusicLump(name, _sourceWadName, data),
+
+                // Map markers are stored as BinaryLump (they're just markers with no real data parsing)
+                _ when MapDetector.IsMapMarker(name) => new BinaryLump(name, _sourceWadName, data),
+
                 _ => new BinaryLump(name, _sourceWadName, data)
             };
         }
