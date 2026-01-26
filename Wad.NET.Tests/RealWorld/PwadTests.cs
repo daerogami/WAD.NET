@@ -1,9 +1,13 @@
+using System.IO;
 using System.Linq;
 using Xunit;
 using WAD.NET.Archives;
 using WAD.NET.Concrete;
+using WAD.NET.Definitions;
 using WAD.NET.Enums;
+using WAD.NET.Export;
 using WAD.NET.Maps;
+using WAD.NET.Resources;
 using WAD.NET.Tests.Infrastructure;
 
 namespace WAD.NET.Tests.RealWorld
@@ -275,6 +279,198 @@ namespace WAD.NET.Tests.RealWorld
 
             Assert.Equal(ArchiveType.WAD, reader.Type);
             Assert.IsType<WadArchiveReader>(reader);
+        }
+
+        #endregion
+
+        #region Phase 4: Resource Parsing Tests
+
+        [SkippableFact]
+        public void Pwad_ShouldParseCustomFlats()
+        {
+            var pwads = Paths.GetPwads();
+            int testedCount = 0;
+
+            foreach (var (name, path) in pwads)
+            {
+                if (!WadTestConfiguration.IsAvailable(path))
+                    continue;
+
+                testedCount++;
+
+                using var reader = new WadReader(path);
+                var wad = reader.ReadWad();
+
+                var flats = wad.Lumps.OfType<FlatLump>().ToList();
+
+                // If this PWAD has custom flats, verify they parse correctly
+                if (flats.Count > 0)
+                {
+                    foreach (var flat in flats.Take(5))
+                    {
+                        Assert.Equal(4096, flat.Pixels.Length);
+                    }
+                    return; // Found and tested
+                }
+            }
+
+            Skip.If(testedCount == 0, "No PWADs configured for testing");
+        }
+
+        [SkippableFact]
+        public void Pwad_ShouldParseCustomSprites()
+        {
+            var pwads = Paths.GetPwads();
+            int testedCount = 0;
+
+            foreach (var (name, path) in pwads)
+            {
+                if (!WadTestConfiguration.IsAvailable(path))
+                    continue;
+
+                testedCount++;
+
+                using var reader = new WadReader(path);
+                var wad = reader.ReadWad();
+
+                var sprites = wad.Lumps.OfType<PictureLump>().ToList();
+
+                // If this PWAD has custom sprites, verify they parse correctly
+                if (sprites.Count > 0)
+                {
+                    foreach (var sprite in sprites.Take(5))
+                    {
+                        Assert.True(sprite.Picture.Width > 0);
+                        Assert.True(sprite.Picture.Height > 0);
+                    }
+                    return; // Found and tested
+                }
+            }
+
+            Skip.If(testedCount == 0, "No PWADs configured for testing");
+        }
+
+        [SkippableFact]
+        public void Pwad_ShouldParseCustomMusic()
+        {
+            var pwads = Paths.GetPwads();
+            int testedCount = 0;
+
+            foreach (var (name, path) in pwads)
+            {
+                if (!WadTestConfiguration.IsAvailable(path))
+                    continue;
+
+                testedCount++;
+
+                using var reader = new WadReader(path);
+                var wad = reader.ReadWad();
+
+                var musicLumps = wad.Lumps.OfType<MusicLump>().ToList();
+
+                // If this PWAD has music, verify it parses correctly
+                if (musicLumps.Count > 0)
+                {
+                    foreach (var music in musicLumps.Take(3))
+                    {
+                        Assert.True(music.IsMus || music.IsMidi || music.RawData.Length > 0,
+                            $"Music lump {music.Name} should have valid data");
+                    }
+                    return; // Found and tested
+                }
+            }
+
+            Skip.If(testedCount == 0, "No PWADs configured for testing");
+        }
+
+        [SkippableFact]
+        public void Pwad_WithCustomPalette_ShouldParse()
+        {
+            var pwads = Paths.GetPwads();
+            int testedCount = 0;
+
+            foreach (var (name, path) in pwads)
+            {
+                if (!WadTestConfiguration.IsAvailable(path))
+                    continue;
+
+                testedCount++;
+
+                using var archiveReader = new WadArchiveReader(path);
+
+                var playpalEntry = archiveReader.GetEntry("PLAYPAL");
+                if (playpalEntry != null)
+                {
+                    var data = archiveReader.ReadLump(playpalEntry);
+                    var palette = new PaletteLump("PLAYPAL", path, data);
+
+                    Assert.Equal(14, palette.Palettes.Length);
+                    return; // Found and tested
+                }
+            }
+
+            Skip.If(testedCount == 0, "No PWADs with custom palettes configured");
+        }
+
+        [SkippableFact]
+        public void Pwad_WithCustomTextures_ShouldParse()
+        {
+            var pwads = Paths.GetPwads();
+            int testedCount = 0;
+
+            foreach (var (name, path) in pwads)
+            {
+                if (!WadTestConfiguration.IsAvailable(path))
+                    continue;
+
+                testedCount++;
+
+                using var archiveReader = new WadArchiveReader(path);
+
+                var texture1Entry = archiveReader.GetEntry("TEXTURE1");
+                if (texture1Entry != null)
+                {
+                    var data = archiveReader.ReadLump(texture1Entry);
+                    var textures = new TextureLump("TEXTURE1", path, data);
+
+                    Assert.True(textures.Count > 0, $"{name} should have texture definitions");
+                    return; // Found and tested
+                }
+            }
+
+            Skip.If(testedCount == 0, "No PWADs with custom textures configured");
+        }
+
+        [SkippableFact]
+        public void Pwad_ShouldExportFlatToImage()
+        {
+            var pwads = Paths.GetPwads();
+            int testedCount = 0;
+
+            foreach (var (name, path) in pwads)
+            {
+                if (!WadTestConfiguration.IsAvailable(path))
+                    continue;
+
+                testedCount++;
+
+                using var reader = new WadReader(path);
+                var wad = reader.ReadWad();
+
+                var flatLump = wad.Lumps.OfType<FlatLump>().FirstOrDefault();
+                var paletteLump = wad.Lumps.OfType<PaletteLump>().FirstOrDefault();
+
+                if (flatLump != null && paletteLump != null)
+                {
+                    using var output = new MemoryStream();
+                    ImageExporter.ExportTga(flatLump, paletteLump.NormalPalette, output);
+
+                    Assert.True(output.Length > 18, "TGA export should produce data");
+                    return;
+                }
+            }
+
+            Skip.If(testedCount == 0, "No PWADs with flats and palettes configured");
         }
 
         #endregion

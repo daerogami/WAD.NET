@@ -26,6 +26,7 @@ namespace WAD.NET.Concrete
         private long _fileSize;
         private bool _readingFlats;
         private bool _readingSprites;
+        private bool _readingPatches;
 
         public WadReader(string filePath)
         {
@@ -207,6 +208,20 @@ namespace WAD.NET.Concrete
                 case "SS_END":
                     _readingSprites = false;
                     break;
+                case "P_START":
+                case "PP_START":
+                case "P1_START":
+                case "P2_START":
+                case "P3_START":
+                    _readingPatches = true;
+                    break;
+                case "P_END":
+                case "PP_END":
+                case "P1_END":
+                case "P2_END":
+                case "P3_END":
+                    _readingPatches = false;
+                    break;
             }
 
             // Add map markers to the lump queue so MapReader can find them
@@ -250,10 +265,44 @@ namespace WAD.NET.Concrete
                 return null;
             }
 
+            if (name == "P_START" || name == "P_END" || name == "PP_START" || name == "PP_END" ||
+                name == "P1_START" || name == "P1_END" || name == "P2_START" || name == "P2_END" ||
+                name == "P3_START" || name == "P3_END")
+            {
+                _readingPatches = name.Contains("START");
+                return null;
+            }
+
             // Context-aware lump creation (flats between markers)
             if (_readingFlats && data.Length == FlatLump.Size)
             {
                 return new FlatLump(name, _sourceWadName, data);
+            }
+
+            // Sprites between S_START/S_END markers
+            if (_readingSprites && data.Length > 8 && PictureLump.LooksLikePicture(data))
+            {
+                try
+                {
+                    return new PictureLump(name, _sourceWadName, data);
+                }
+                catch (FormatException)
+                {
+                    // Fall through to default handling
+                }
+            }
+
+            // Patches between P_START/P_END markers
+            if (_readingPatches && data.Length > 8 && PictureLump.LooksLikePicture(data))
+            {
+                try
+                {
+                    return new PictureLump(name, _sourceWadName, data);
+                }
+                catch (FormatException)
+                {
+                    // Fall through to default handling
+                }
             }
 
             // Named lump types

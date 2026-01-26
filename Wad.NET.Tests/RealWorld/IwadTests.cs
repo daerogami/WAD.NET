@@ -1,9 +1,13 @@
+using System.IO;
 using System.Linq;
 using Xunit;
 using WAD.NET.Archives;
 using WAD.NET.Concrete;
+using WAD.NET.Definitions;
 using WAD.NET.Enums;
+using WAD.NET.Export;
 using WAD.NET.Maps;
+using WAD.NET.Resources;
 using WAD.NET.Tests.Infrastructure;
 
 namespace WAD.NET.Tests.RealWorld
@@ -411,6 +415,283 @@ namespace WAD.NET.Tests.RealWorld
 
             Assert.NotEmpty(mapLumps);
             Assert.NotEmpty(musicLumps);
+        }
+
+        #endregion
+
+        #region Phase 4: Resource Parsing Tests
+
+        [SkippableFact]
+        public void Doom_ShouldParsePalette()
+        {
+            var path = RequireWad("Doom", Paths.Doom);
+
+            using var reader = new WadArchiveReader(path);
+            var entry = reader.GetEntry("PLAYPAL");
+            Assert.NotNull(entry);
+
+            var data = reader.ReadLump(entry);
+            var paletteLump = new PaletteLump("PLAYPAL", path, data);
+
+            Assert.Equal(14, paletteLump.Palettes.Length);
+            Assert.NotNull(paletteLump.NormalPalette);
+            Assert.Equal(256, paletteLump.NormalPalette.Colors.Length);
+        }
+
+        [SkippableFact]
+        public void Doom_ShouldParseTextureDefinitions()
+        {
+            var path = RequireWad("Doom", Paths.Doom);
+
+            using var reader = new WadArchiveReader(path);
+
+            var texture1Entry = reader.GetEntry("TEXTURE1");
+            Assert.NotNull(texture1Entry);
+
+            var data = reader.ReadLump(texture1Entry);
+            var textureLump = new TextureLump("TEXTURE1", path, data);
+
+            Assert.True(textureLump.Count > 0, "DOOM should have texture definitions");
+
+            // DOOM has well-known textures
+            var startan = textureLump.Find("STARTAN1") ?? textureLump.Find("STARTAN2");
+            Assert.NotNull(startan);
+        }
+
+        [SkippableFact]
+        public void Doom_ShouldParsePatchNames()
+        {
+            var path = RequireWad("Doom", Paths.Doom);
+
+            using var reader = new WadArchiveReader(path);
+
+            var pnamesEntry = reader.GetEntry("PNAMES");
+            Assert.NotNull(pnamesEntry);
+
+            var data = reader.ReadLump(pnamesEntry);
+            var pnamesLump = new PatchNamesLump("PNAMES", path, data);
+
+            Assert.True(pnamesLump.Count > 0, "DOOM should have patch names");
+        }
+
+        [SkippableFact]
+        public void Doom_ShouldParseSpriteLumps()
+        {
+            var path = RequireWad("Doom", Paths.Doom);
+
+            using var reader = new WadReader(path);
+            var wad = reader.ReadWad();
+
+            // Find sprite lumps (they should be PictureLumps)
+            var spriteLumps = wad.Lumps.OfType<PictureLump>().ToList();
+
+            Assert.NotEmpty(spriteLumps);
+
+            // Verify a known sprite exists and parses correctly
+            var playerSprite = spriteLumps.FirstOrDefault(l => l.Name.StartsWith("PLAY"));
+            if (playerSprite != null)
+            {
+                Assert.True(playerSprite.Picture.Width > 0);
+                Assert.True(playerSprite.Picture.Height > 0);
+            }
+        }
+
+        [SkippableFact]
+        public void Doom_ShouldParseFlatLumps()
+        {
+            var path = RequireWad("Doom", Paths.Doom);
+
+            using var reader = new WadReader(path);
+            var wad = reader.ReadWad();
+
+            // Find flat lumps
+            var flatLumps = wad.Lumps.OfType<FlatLump>().ToList();
+
+            Assert.NotEmpty(flatLumps);
+
+            // All flats should be 64x64
+            foreach (var flat in flatLumps.Take(10))
+            {
+                Assert.Equal(64, FlatLump.Width);
+                Assert.Equal(64, FlatLump.Height);
+                Assert.Equal(4096, flat.Pixels.Length);
+            }
+        }
+
+        [SkippableFact]
+        public void Doom_ShouldParseMusicLumps()
+        {
+            var path = RequireWad("Doom", Paths.Doom);
+
+            using var reader = new WadReader(path);
+            var wad = reader.ReadWad();
+
+            // Find music lumps
+            var musicLumps = wad.Lumps.OfType<MusicLump>().ToList();
+
+            Assert.NotEmpty(musicLumps);
+
+            // D_E1M1 should exist and be MUS format
+            var e1m1Music = musicLumps.FirstOrDefault(m => m.Name == "D_E1M1");
+            Assert.NotNull(e1m1Music);
+            Assert.True(e1m1Music.IsMus, "D_E1M1 should be MUS format");
+            Assert.False(e1m1Music.IsMidi);
+        }
+
+        [SkippableFact]
+        public void Doom_ShouldConvertMusToMidi()
+        {
+            var path = RequireWad("Doom", Paths.Doom);
+
+            using var reader = new WadReader(path);
+            var wad = reader.ReadWad();
+
+            var musicLump = wad.Lumps.OfType<MusicLump>().FirstOrDefault(m => m.IsMus);
+            Assert.NotNull(musicLump);
+
+            var midi = musicLump.ToMidi();
+
+            // Verify MIDI header
+            Assert.True(midi.Length > 22, "MIDI should have header and track");
+            Assert.Equal((byte)'M', midi[0]);
+            Assert.Equal((byte)'T', midi[1]);
+            Assert.Equal((byte)'h', midi[2]);
+            Assert.Equal((byte)'d', midi[3]);
+        }
+
+        [SkippableFact]
+        public void Doom_ShouldParseSoundLumps()
+        {
+            var path = RequireWad("Doom", Paths.Doom);
+
+            using var reader = new WadReader(path);
+            var wad = reader.ReadWad();
+
+            // Find sound lumps
+            var soundLumps = wad.Lumps.OfType<SoundLump>().ToList();
+
+            Assert.NotEmpty(soundLumps);
+
+            // DSPISTOL should exist
+            var pistol = soundLumps.FirstOrDefault(s => s.Name == "DSPISTOL");
+            Assert.NotNull(pistol);
+            Assert.Equal(3, pistol.Format);
+            Assert.True(pistol.SampleRate > 0);
+            Assert.True(pistol.Samples.Length > 0);
+        }
+
+        [SkippableFact]
+        public void Doom_ShouldExportSoundToWav()
+        {
+            var path = RequireWad("Doom", Paths.Doom);
+
+            using var reader = new WadReader(path);
+            var wad = reader.ReadWad();
+
+            var soundLump = wad.Lumps.OfType<SoundLump>().FirstOrDefault();
+            Assert.NotNull(soundLump);
+
+            using var output = new MemoryStream();
+            soundLump.ExportWav(output);
+
+            var wavData = output.ToArray();
+            Assert.True(wavData.Length > 44, "WAV should have header and data");
+            Assert.Equal((byte)'R', wavData[0]);
+            Assert.Equal((byte)'I', wavData[1]);
+            Assert.Equal((byte)'F', wavData[2]);
+            Assert.Equal((byte)'F', wavData[3]);
+        }
+
+        [SkippableFact]
+        public void Doom_ResourceManager_ShouldLoadSystemLumps()
+        {
+            var path = RequireWad("Doom", Paths.Doom);
+
+            using var archiveReader = new WadArchiveReader(path);
+            using var resourceManager = new ResourceManager(archiveReader);
+
+            Assert.NotNull(resourceManager.DefaultPalette);
+            Assert.NotEmpty(resourceManager.Palettes);
+            Assert.NotEmpty(resourceManager.PatchNames);
+            Assert.NotEmpty(resourceManager.Textures);
+        }
+
+        [SkippableFact]
+        public void Doom_ResourceManager_ShouldGetFlat()
+        {
+            var path = RequireWad("Doom", Paths.Doom);
+
+            using var archiveReader = new WadArchiveReader(path);
+            using var resourceManager = new ResourceManager(archiveReader);
+
+            // FLOOR4_8 is a well-known DOOM flat
+            var flat = resourceManager.GetFlat("FLOOR4_8");
+            Assert.NotNull(flat);
+            Assert.Equal(4096, flat.Pixels.Length);
+        }
+
+        [SkippableFact]
+        public void Doom_ResourceManager_ShouldFindTexture()
+        {
+            var path = RequireWad("Doom", Paths.Doom);
+
+            using var archiveReader = new WadArchiveReader(path);
+            using var resourceManager = new ResourceManager(archiveReader);
+
+            var texture = resourceManager.FindTexture("STARTAN2");
+            Assert.NotNull(texture);
+            Assert.True(texture.Width > 0);
+            Assert.True(texture.Height > 0);
+        }
+
+        [SkippableFact]
+        public void Doom_ShouldExportFlatToTga()
+        {
+            var path = RequireWad("Doom", Paths.Doom);
+
+            using var reader = new WadReader(path);
+            var wad = reader.ReadWad();
+
+            var paletteLump = wad.Lumps.OfType<PaletteLump>().FirstOrDefault();
+            var flatLump = wad.Lumps.OfType<FlatLump>().FirstOrDefault();
+
+            Assert.NotNull(paletteLump);
+            Assert.NotNull(flatLump);
+
+            using var output = new MemoryStream();
+            ImageExporter.ExportTga(flatLump, paletteLump.NormalPalette, output);
+
+            var tgaData = output.ToArray();
+
+            // TGA header validation
+            Assert.True(tgaData.Length > 18, "TGA should have header");
+            Assert.Equal(2, tgaData[2]); // Uncompressed true-color
+            Assert.Equal(32, tgaData[16]); // 32-bit BGRA
+        }
+
+        [SkippableFact]
+        public void Doom_ShouldExportSpriteToBmp()
+        {
+            var path = RequireWad("Doom", Paths.Doom);
+
+            using var reader = new WadReader(path);
+            var wad = reader.ReadWad();
+
+            var paletteLump = wad.Lumps.OfType<PaletteLump>().FirstOrDefault();
+            var pictureLump = wad.Lumps.OfType<PictureLump>().FirstOrDefault();
+
+            Assert.NotNull(paletteLump);
+            Assert.NotNull(pictureLump);
+
+            using var output = new MemoryStream();
+            ImageExporter.ExportBmp(pictureLump.Picture, paletteLump.NormalPalette, output);
+
+            var bmpData = output.ToArray();
+
+            // BMP header validation
+            Assert.True(bmpData.Length > 54, "BMP should have header");
+            Assert.Equal((byte)'B', bmpData[0]);
+            Assert.Equal((byte)'M', bmpData[1]);
         }
 
         #endregion

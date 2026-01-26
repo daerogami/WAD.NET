@@ -1,7 +1,12 @@
+using System.IO;
 using System.Linq;
 using Xunit;
 using WAD.NET.Archives;
+using WAD.NET.Concrete;
+using WAD.NET.Definitions;
 using WAD.NET.Enums;
+using WAD.NET.Export;
+using WAD.NET.Resources;
 using WAD.NET.Tests.Infrastructure;
 
 namespace WAD.NET.Tests.RealWorld
@@ -318,6 +323,184 @@ namespace WAD.NET.Tests.RealWorld
             }
 
             Skip.If(true, "No PK3s with sounds folder configured");
+        }
+
+        #endregion
+
+        #region Phase 4: Resource Parsing Tests
+
+        [SkippableFact]
+        public void Pk3_ShouldParseSpritesAsPictures()
+        {
+            var pk3s = Paths.GetPk3s();
+            int testedCount = 0;
+
+            foreach (var (name, path) in pk3s)
+            {
+                if (!WadTestConfiguration.IsAvailable(path))
+                    continue;
+
+                testedCount++;
+
+                using var reader = new Pk3Reader(path);
+
+                var spriteEntries = reader.GetEntriesByCategory(LumpCategory.Sprite)
+                    .Where(e => e.Size > 8 && !e.FullPath.EndsWith(".png", System.StringComparison.OrdinalIgnoreCase)
+                                           && !e.FullPath.EndsWith(".jpg", System.StringComparison.OrdinalIgnoreCase))
+                    .Take(5)
+                    .ToList();
+
+                foreach (var entry in spriteEntries)
+                {
+                    var data = reader.ReadLump(entry);
+
+                    if (PictureLump.LooksLikePicture(data))
+                    {
+                        var picture = PictureLump.ParsePicture(entry.Name, data);
+                        Assert.True(picture.Width > 0);
+                        Assert.True(picture.Height > 0);
+                        return; // Found and tested at least one
+                    }
+                }
+            }
+
+            Skip.If(testedCount == 0, "No PK3s configured for testing");
+        }
+
+        [SkippableFact]
+        public void Pk3_ResourceManager_ShouldWork()
+        {
+            var pk3s = Paths.GetPk3s();
+            int testedCount = 0;
+
+            foreach (var (name, path) in pk3s)
+            {
+                if (!WadTestConfiguration.IsAvailable(path))
+                    continue;
+
+                testedCount++;
+
+                using var archiveReader = new Pk3Reader(path);
+
+                // Check if this PK3 has a PLAYPAL
+                if (archiveReader.Contains("PLAYPAL"))
+                {
+                    using var resourceManager = new ResourceManager(archiveReader);
+
+                    Assert.NotNull(resourceManager.DefaultPalette);
+                    return; // Found and tested
+                }
+            }
+
+            Skip.If(testedCount == 0, "No PK3s with PLAYPAL configured");
+        }
+
+        [SkippableFact]
+        public void Pk3_FlatsFolder_ShouldParseFlatLumps()
+        {
+            var pk3s = Paths.GetPk3s();
+            int testedCount = 0;
+
+            foreach (var (name, path) in pk3s)
+            {
+                if (!WadTestConfiguration.IsAvailable(path))
+                    continue;
+
+                testedCount++;
+
+                using var reader = new Pk3Reader(path);
+
+                var flatEntries = reader.GetEntriesByCategory(LumpCategory.Flat)
+                    .Where(e => e.Size == FlatLump.Size)
+                    .Take(5)
+                    .ToList();
+
+                foreach (var entry in flatEntries)
+                {
+                    var data = reader.ReadLump(entry);
+                    var flat = new FlatLump(entry.Name, path, data);
+
+                    Assert.Equal(4096, flat.Pixels.Length);
+                }
+
+                if (flatEntries.Count > 0)
+                    return; // Found and tested
+            }
+
+            Skip.If(testedCount == 0, "No PK3s with standard flats configured");
+        }
+
+        [SkippableFact]
+        public void Pk3_ShouldParseMusicLumps()
+        {
+            var pk3s = Paths.GetPk3s();
+            int testedCount = 0;
+
+            foreach (var (name, path) in pk3s)
+            {
+                if (!WadTestConfiguration.IsAvailable(path))
+                    continue;
+
+                testedCount++;
+
+                using var reader = new Pk3Reader(path);
+
+                var musicEntries = reader.GetEntriesByCategory(LumpCategory.Music)
+                    .Where(e => e.Size > 4)
+                    .Take(3)
+                    .ToList();
+
+                foreach (var entry in musicEntries)
+                {
+                    var data = reader.ReadLump(entry);
+                    var music = new MusicLump(entry.Name, path, data);
+
+                    // Should detect format (MUS, MIDI, or unknown)
+                    Assert.True(music.RawData.Length > 0);
+                }
+
+                if (musicEntries.Count > 0)
+                    return; // Found and tested
+            }
+
+            Skip.If(testedCount == 0, "No PK3s with music configured");
+        }
+
+        [SkippableFact]
+        public void Pk3_ShouldParseSoundLumps()
+        {
+            var pk3s = Paths.GetPk3s();
+            int testedCount = 0;
+
+            foreach (var (name, path) in pk3s)
+            {
+                if (!WadTestConfiguration.IsAvailable(path))
+                    continue;
+
+                testedCount++;
+
+                using var reader = new Pk3Reader(path);
+
+                var soundEntries = reader.GetEntriesByCategory(LumpCategory.Sound)
+                    .Where(e => e.Size > 8 && e.Name.StartsWith("DS", System.StringComparison.OrdinalIgnoreCase))
+                    .Take(3)
+                    .ToList();
+
+                foreach (var entry in soundEntries)
+                {
+                    var data = reader.ReadLump(entry);
+
+                    // Check if it's DMX format
+                    if (data.Length >= 8 && data[0] == 3 && data[1] == 0)
+                    {
+                        var sound = new SoundLump(entry.Name, path, data);
+                        Assert.Equal(3, sound.Format);
+                        return; // Found and tested
+                    }
+                }
+            }
+
+            Skip.If(testedCount == 0, "No PK3s with DMX sound lumps configured");
         }
 
         #endregion
