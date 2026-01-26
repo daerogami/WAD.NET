@@ -1,218 +1,235 @@
-﻿namespace WAD.NET.UDMF.Fields
+using WAD.NET;
+
+namespace WAD.NET.UDMF.Fields
 {
     /// <summary>
-    /// Line Definition
+    /// UDMF Line Definition.
     /// </summary>
     /// <remarks>
     /// As defined by UDMF 1.1
     /// <see cref="https://github.com/coelckers/gzdoom/blob/master/specs/udmf.txt"/>
     /// </remarks>
-    struct LineDefinition
+    public struct LineDefinition
     {
         /// <summary>
-        /// ID of line. Interpreted as tag or scripting id.
-        /// Default = -1. *** see below.
+        /// ID of line. Interpreted as tag or scripting id. Default = -1.
         /// </summary>
-        int id;
+        public int Id { get; set; }
 
         /// <summary>
         /// Index of first vertex. No valid default.
         /// </summary>
-        int v1;
+        public int V1 { get; set; }
 
         /// <summary>
         /// Index of second vertex. No valid default.
         /// </summary>
-        int v2;
+        public int V2 { get; set; }
 
         /// <summary>
         /// true = line blocks things.
         /// </summary>
-        bool blocking;
+        public bool Blocking { get; set; }
 
         /// <summary>
         /// true = line blocks monsters.
         /// </summary>
-        bool blockmonsters;
+        public bool BlockMonsters { get; set; }
 
         /// <summary>
         /// true = line is 2S.
         /// </summary>
-        bool twosided;
+        public bool TwoSided { get; set; }
 
         /// <summary>
         /// true = upper texture unpegged.
         /// </summary>
-        bool dontpegtop;
+        public bool DontPegTop { get; set; }
 
         /// <summary>
         /// true = lower texture unpegged.
         /// </summary>
-        bool dontpegbottom;
+        public bool DontPegBottom { get; set; }
 
         /// <summary>
         /// true = drawn as 1S on map.
         /// </summary>
-        bool secret;
+        public bool Secret { get; set; }
 
         /// <summary>
         /// true = blocks sound.
         /// </summary>
-        bool blocksound;
+        public bool BlockSound { get; set; }
 
         /// <summary>
         /// true = line never drawn on map.
         /// </summary>
-        bool dontdraw;
+        public bool DontDraw { get; set; }
 
         /// <summary>
         /// true = always appears on map.
         /// </summary>
-        bool mapped;
+        public bool Mapped { get; set; }
 
         /// <summary>
         /// true = passes use action.
         /// </summary>
-        /// <remarks>
-        /// BOOM passuse flag not supported in Strife/Heretic/Hexen namespaces.
-        /// </remarks>
         [BoomFlag]
-        bool passuse;
+        public bool PassUse { get; set; }
 
         /// <summary>
         /// true = line is a Strife translucent line.
         /// </summary>
-        /// <remarks>
-        /// Strife specific flag. Support for other games is not defined by default and this flag should be ignored when reading maps not for the Strife namespace or maps for a port which supports this flag.
-        /// </remarks>
         [StrifeFlag]
-        bool translucent;
+        public bool Translucent { get; set; }
 
         /// <summary>
         /// true = line is a Strife railing.
         /// </summary>
-        /// <remarks>
-        /// Strife specific flag. Support for other games is not defined by default and this flag should be ignored when reading maps not for the Strife namespace or maps for a port which supports this flag.
-        /// </remarks>
         [StrifeFlag]
-        bool jumpover;
+        public bool JumpOver { get; set; }
 
         /// <summary>
         /// true = line is a Strife float-blocker.
         /// </summary>
-        /// <remarks>
-        /// Strife specific flag. Support for other games is not defined by default and this flag should be ignored when reading maps not for the Strife namespace or maps for a port which supports this flag.
-        /// </remarks>
         [StrifeFlag]
-        bool blockfloaters;
-
+        public bool BlockFloaters { get; set; }
 
         /// <summary>
         /// true = player can cross.
         /// </summary>
-        /// <remarks>SPAC flags should be set false in Doom/Heretic/Strife namespace maps. Specials in those games do not support this mechanism and instead imply activation parameters through the special number. All flags default to false.</remarks>
         [SPACFlag]
-        bool playercross;
+        public bool PlayerCross { get; set; }
 
         /// <summary>
         /// true = player can use.
         /// </summary>
-        /// <remarks>SPAC flags should be set false in Doom/Heretic/Strife namespace maps. Specials in those games do not support this mechanism and instead imply activation parameters through the special number. All flags default to false.</remarks>
         [SPACFlag]
-        bool playeruse;
+        public bool PlayerUse { get; set; }
 
         /// <summary>
         /// true = monster can cross.
         /// </summary>
-        /// <remarks>SPAC flags should be set false in Doom/Heretic/Strife namespace maps. Specials in those games do not support this mechanism and instead imply activation parameters through the special number. All flags default to false.</remarks>
         [SPACFlag]
-        bool monstercross;
+        public bool MonsterCross { get; set; }
 
         /// <summary>
         /// true = monster can use.
         /// </summary>
-        /// <remarks>SPAC flags should be set false in Doom/Heretic/Strife namespace maps. Specials in those games do not support this mechanism and instead imply activation parameters through the special number. All flags default to false.</remarks>
         [SPACFlag]
-        bool monsteruse;
+        public bool MonsterUse { get; set; }
 
         /// <summary>
         /// true = projectile can activate.
         /// </summary>
-        /// <remarks>SPAC flags should be set false in Doom/Heretic/Strife namespace maps. Specials in those games do not support this mechanism and instead imply activation parameters through the special number. All flags default to false.</remarks>
         [SPACFlag]
-        bool impact;
+        public bool Impact { get; set; }
 
         /// <summary>
         /// true = player can push.
         /// </summary>
-        /// <remarks>SPAC flags should be set false in Doom/Heretic/Strife namespace maps. Specials in those games do not support this mechanism and instead imply activation parameters through the special number. All flags default to false.</remarks>
         [SPACFlag]
-        bool playerpush;
+        public bool PlayerPush { get; set; }
 
         /// <summary>
         /// true = monster can push.
         /// </summary>
-        /// <remarks>SPAC flags should be set false in Doom/Heretic/Strife namespace maps. Specials in those games do not support this mechanism and instead imply activation parameters through the special number. All flags default to false.</remarks>
         [SPACFlag]
-        bool monsterpush;
+        public bool MonsterPush { get; set; }
 
         /// <summary>
         /// true = projectile can cross.
         /// </summary>
-        /// <remarks>SPAC flags should be set false in Doom/Heretic/Strife namespace maps. Specials in those games do not support this mechanism and instead imply activation parameters through the special number. All flags default to false.</remarks>
         [SPACFlag]
-        bool missilecross;
+        public bool MissileCross { get; set; }
 
         /// <summary>
         /// true = repeatable special.
         /// </summary>
-        /// <remarks>SPAC flags should be set false in Doom/Heretic/Strife namespace maps. Specials in those games do not support this mechanism and instead imply activation parameters through the special number. All flags default to false.</remarks>
         [SPACFlag]
-        bool repeatspecial;
+        public bool RepeatSpecial { get; set; }
 
         /// <summary>
         /// Special. Default = 0.
         /// </summary>
-        int special;
+        public int Special { get; set; }
 
         /// <summary>
         /// Argument 0. Default = 0.
         /// </summary>
-        int arg0;
+        public int Arg0 { get; set; }
 
         /// <summary>
         /// Argument 1. Default = 0.
         /// </summary>
-        int arg1;
+        public int Arg1 { get; set; }
 
         /// <summary>
         /// Argument 2. Default = 0.
         /// </summary>
-        int arg2;
+        public int Arg2 { get; set; }
 
         /// <summary>
         /// Argument 3. Default = 0.
         /// </summary>
-        int arg3;
+        public int Arg3 { get; set; }
 
         /// <summary>
         /// Argument 4. Default = 0.
         /// </summary>
-        int arg4;
+        public int Arg4 { get; set; }
 
         /// <summary>
         /// Sidedef 1 index. No valid default.
         /// </summary>
-        int sidefront;
+        public int SideFront { get; set; }
 
         /// <summary>
         /// Sidedef 2 index. Default = -1.
         /// </summary>
-        int sideback;
+        public int SideBack { get; set; }
 
         /// <summary>
-        /// A comment. Implementors should attach no special semantic meaning to this field.
+        /// A comment.
         /// </summary>
-        string comment;
+        public string Comment { get; set; }
+
+        public LineDefinition()
+        {
+            Id = -1;
+            V1 = 0;
+            V2 = 0;
+            Blocking = false;
+            BlockMonsters = false;
+            TwoSided = false;
+            DontPegTop = false;
+            DontPegBottom = false;
+            Secret = false;
+            BlockSound = false;
+            DontDraw = false;
+            Mapped = false;
+            PassUse = false;
+            Translucent = false;
+            JumpOver = false;
+            BlockFloaters = false;
+            PlayerCross = false;
+            PlayerUse = false;
+            MonsterCross = false;
+            MonsterUse = false;
+            Impact = false;
+            PlayerPush = false;
+            MonsterPush = false;
+            MissileCross = false;
+            RepeatSpecial = false;
+            Special = 0;
+            Arg0 = 0;
+            Arg1 = 0;
+            Arg2 = 0;
+            Arg3 = 0;
+            Arg4 = 0;
+            SideFront = 0;
+            SideBack = -1;
+            Comment = null;
+        }
     }
 }

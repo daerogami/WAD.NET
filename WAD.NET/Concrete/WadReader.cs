@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.IO;
 using System.Text;
 using WAD.NET.Abstract;
@@ -9,172 +8,279 @@ using WAD.NET.Interfaces;
 namespace WAD.NET.Concrete
 {
     /// <summary>
-    /// Reader for loading wad into memory for evaluation
+    /// Reader for loading WAD files into memory for evaluation.
     /// </summary>
     /// <remarks>
-    /// Implemented following UDMF spec
-    /// <see cref="https://github.com/coelckers/gzdoom/blob/master/specs/udmf.txt"/>
+    /// WAD file format specification: https://doomwiki.org/wiki/WAD
     /// </remarks>
     public class WadReader : IWadReader
     {
-        private string _sourceWadName;
-        private BinaryReader _reader { get; set; }
-        private bool _readingFlats;
+        private const int HeaderSize = 12;
+        private const int DirectoryEntrySize = 16;
+        private const int LumpNameSize = 8;
 
+        private string _sourceWadName;
+        private BinaryReader _reader;
+        private long _fileSize;
+        private bool _readingFlats;
+        private bool _readingSprites;
 
         public WadReader(string filePath)
         {
             if (!File.Exists(filePath))
             {
-                throw new FileNotFoundException();
+                throw new FileNotFoundException($"WAD file not found: {filePath}", filePath);
             }
+
             _sourceWadName = Path.GetFileName(filePath);
-            _reader = new BinaryReader(File.OpenRead(filePath));
+            var stream = File.OpenRead(filePath);
+            _fileSize = stream.Length;
+            _reader = new BinaryReader(stream);
         }
 
         public WadReader(Stream input, Encoding encoding = null, bool leaveOpen = false, string wadName = null)
         {
-            if (encoding == null)
-            {
-                encoding = new UTF8Encoding();
-            }
+            if (input == null)
+                throw new ArgumentNullException(nameof(input));
+
+            encoding ??= Encoding.ASCII;
+            _sourceWadName = wadName ?? string.Empty;
+            _fileSize = input.Length;
             _reader = new BinaryReader(input, encoding, leaveOpen);
         }
 
         public Wad ReadWad()
         {
-            var _wad = new Wad
+            ValidateMinimumFileSize();
+
+            var wad = new Wad
             {
                 Name = _sourceWadName
             };
 
-            var wadType = GetWadFileType();
+            wad.WadType = ReadWadType();
             var directoryCount = _reader.ReadInt32();
-            var directoryLocationPtr = _reader.ReadInt32();
-            _reader.BaseStream.Seek(directoryLocationPtr, SeekOrigin.Begin);
+            var directoryOffset = _reader.ReadInt32();
+
+            ValidateDirectory(directoryCount, directoryOffset);
+
+            _reader.BaseStream.Seek(directoryOffset, SeekOrigin.Begin);
+
             for (var i = 0; i < directoryCount; i++)
             {
-                var (offset, size, name) = GetNextLumpInfo();
+                var (offset, size, name) = ReadDirectoryEntry();
+
                 if (size == 0)
                 {
-                    HandleMarkerLump(_wad, name);
+                    HandleMarkerLump(name);
                 }
                 else
                 {
-                    HandleDataLump(_wad, offset, name, size);
+                    var lump = ReadLump(offset, size, name);
+                    if (lump != null)
+                    {
+                        wad.Lumps.Enqueue(lump);
+                    }
                 }
             }
 
-            return _wad;
+            return wad;
         }
 
-        private (int offset, int size, string name) GetNextLumpInfo()
+        private void ValidateMinimumFileSize()
         {
-            var lumpPtr = _reader.ReadInt32();
-            var lumpSize = _reader.ReadInt32();
-            var lumpNameChars = _reader.ReadChars(8);
-            var specialCompressionMarker = (char)128;
-            if (lumpNameChars[0] == specialCompressionMarker)
+            if (_fileSize < HeaderSize)
             {
-                //https://doomwiki.org/wiki/WAD#Compression
-                throw new NotImplementedException("Lump Uses LZSS Compression");
+                throw new FormatException(
+                    $"WAD file too small: expected at least {HeaderSize} bytes, got {_fileSize}");
             }
-            var lumpNameAsString = new string(lumpNameChars);
-
-            return (lumpPtr, lumpSize, lumpNameAsString);
         }
 
-        private void HandleDataLump(Wad wad, int lumpPtr, string lumpName, int lumpSize)
+        private void ValidateDirectory(int lumpCount, int directoryOffset)
         {
-            var lastPostion = _reader.BaseStream.Position;
-            _reader.BaseStream.Seek(lumpPtr, SeekOrigin.Begin);
-            var data = _reader.ReadBytes(lumpSize);
-            ILump lump;
-            if (_readingFlats)
+            if (directoryOffset < HeaderSize)
             {
-                lump = new FlatLump(lumpName, _sourceWadName);
+                throw new FormatException(
+                    $"Invalid directory offset {directoryOffset}: cannot be before header");
             }
-            else if (lumpName.Equals("PLAYPAL"))
+
+            if (directoryOffset > _fileSize)
             {
-                lump = new PaletteLump(lumpName, _sourceWadName);
+                throw new FormatException(
+                    $"Directory offset {directoryOffset} exceeds file size {_fileSize}");
             }
-            else if (lumpName.Equals("DEMO1") || lumpName.Equals("DEMO2") || lumpName.Equals("DEMO3"))
+
+            long requiredSize = directoryOffset + (long)lumpCount * DirectoryEntrySize;
+            if (requiredSize > _fileSize)
             {
-                lump = new DemoLump(lumpName, _sourceWadName);
+                throw new FormatException(
+                    $"Directory extends beyond file: needs {requiredSize} bytes, file is {_fileSize}");
             }
-            else if (lumpName.Equals("TEXTURE1") || lumpName.Equals("TEXTURE2"))
-            {
-                lump = new TextureListLump(lumpName, _sourceWadName);
-            }
-            else if (lumpName.Equals("PNAMES"))
-            {
-                lump = new WallPatchLump(lumpName, _sourceWadName);
-            }
-            else if (lumpName.Equals("GENMIDI"))
-            {
-                lump = new MidiLump(lumpName, _sourceWadName);
-            }
-            else if (lumpName.StartsWith("DMXGUS"))
-            {
-                lump = new GravisLump(lumpName, _sourceWadName, data.ToString());
-            }
-            else if (lumpName.StartsWith("DP"))
-            {
-                lump = new SpeakerEffectsLump(lumpName, _sourceWadName);
-            }
-            else if (lumpName.StartsWith("DS"))
-            {
-                lump = new SoundEffectsLump(lumpName, _sourceWadName);
-            }
-            else if (lumpName.StartsWith("D_"))
-            {
-                lump = new MusicLump(lumpName, _sourceWadName, data);
-            }
-            else if (lumpName.Equals("F_START"))
-            {
-                _readingFlats = true;
-                return;
-            }
-            else if (lumpName.Equals("F_END"))
-            {
-                _readingFlats = false;
-                return;
-            }
-            else
-            {
-                lump = new BinaryLump(lumpName, _sourceWadName, data); // Other Graphics?
-            }
-            wad.Lumps.Enqueue(lump);
-            _reader.BaseStream.Seek(lastPostion, SeekOrigin.Begin);
         }
 
-        private void HandleMarkerLump(Wad wad, string lumpName)
+        private void ValidateLumpEntry(int offset, int size, string name)
         {
+            if (size <= 0) return;
 
+            if (offset < 0)
+            {
+                throw new FormatException(
+                    $"Lump '{name}' has negative offset {offset}");
+            }
+
+            if (offset > _fileSize)
+            {
+                throw new FormatException(
+                    $"Lump '{name}' offset {offset} exceeds file size {_fileSize}");
+            }
+
+            if ((long)offset + size > _fileSize)
+            {
+                throw new FormatException(
+                    $"Lump '{name}' extends beyond file: offset {offset}, size {size}, file size {_fileSize}");
+            }
         }
 
-        private WadType GetWadFileType()
+        private WadType ReadWadType()
         {
-            var wadType = new string(_reader.ReadChars(4));
-            if (wadType.StartsWith("PK") || wadType.StartsWith("ZIP") || wadType.StartsWith("7z"))
+            var magic = new string(_reader.ReadChars(4));
+
+            // Check for archive formats
+            if (magic.StartsWith("PK") || magic.StartsWith("7z"))
             {
-                throw new FormatException($"Cannot use WadReader to read compressed data. Use CompressedWadReader instead.");
+                throw new FormatException(
+                    "This file appears to be a PK3/ZIP archive. Use a PK3 reader instead.");
             }
-            switch (wadType)
+
+            return magic switch
             {
-                case "IWAD":
-                    return WadType.IWAD;
-                case "PWAD":
-                    return WadType.IWAD;
-                default:
-                    // HIGH: This might happen for valid wads that are compressed (pk3/zip)
-                    throw new FormatException($"Unknown wad file type of '{wadType}'. Expecting 'IWAD' or 'PWAD'");
+                "IWAD" => WadType.IWAD,
+                "PWAD" => WadType.PWAD,
+                _ => throw new FormatException(
+                    $"Unknown WAD type '{magic}'. Expected 'IWAD' or 'PWAD'.")
+            };
+        }
+
+        private (int offset, int size, string name) ReadDirectoryEntry()
+        {
+            var offset = _reader.ReadInt32();
+            var size = _reader.ReadInt32();
+            var nameBytes = _reader.ReadBytes(LumpNameSize);
+
+            // Check for LZSS compression marker
+            if (nameBytes[0] == 128)
+            {
+                throw new NotSupportedException(
+                    "LZSS compressed lumps are not supported. See: https://doomwiki.org/wiki/WAD#Compression");
+            }
+
+            var name = ReadLumpName(nameBytes);
+            return (offset, size, name);
+        }
+
+        private static string ReadLumpName(byte[] nameBytes)
+        {
+            int length = Array.IndexOf(nameBytes, (byte)0);
+            if (length < 0) length = nameBytes.Length;
+            return Encoding.ASCII.GetString(nameBytes, 0, length).ToUpperInvariant();
+        }
+
+        private void HandleMarkerLump(string name)
+        {
+            switch (name)
+            {
+                case "F_START":
+                case "FF_START":
+                    _readingFlats = true;
+                    break;
+                case "F_END":
+                case "FF_END":
+                    _readingFlats = false;
+                    break;
+                case "S_START":
+                case "SS_START":
+                    _readingSprites = true;
+                    break;
+                case "S_END":
+                case "SS_END":
+                    _readingSprites = false;
+                    break;
+            }
+        }
+
+        private ILump ReadLump(int offset, int size, string name)
+        {
+            ValidateLumpEntry(offset, size, name);
+
+            var currentPosition = _reader.BaseStream.Position;
+
+            try
+            {
+                _reader.BaseStream.Seek(offset, SeekOrigin.Begin);
+                var data = _reader.ReadBytes(size);
+
+                return CreateLump(name, data);
+            }
+            finally
+            {
+                _reader.BaseStream.Seek(currentPosition, SeekOrigin.Begin);
+            }
+        }
+
+        private ILump CreateLump(string name, byte[] data)
+        {
+            // Check marker transitions that have data (shouldn't happen but handle gracefully)
+            if (name == "F_START" || name == "F_END" || name == "FF_START" || name == "FF_END")
+            {
+                _readingFlats = name.Contains("START");
+                return null;
+            }
+
+            if (name == "S_START" || name == "S_END" || name == "SS_START" || name == "SS_END")
+            {
+                _readingSprites = name.Contains("START");
+                return null;
+            }
+
+            // Context-aware lump creation (flats between markers)
+            if (_readingFlats && data.Length == FlatLump.Size)
+            {
+                return new FlatLump(name, _sourceWadName, data);
+            }
+
+            // Named lump types
+            return name switch
+            {
+                "PLAYPAL" => new PaletteLump(name, _sourceWadName, data),
+                "COLORMAP" => new ColorMapLump(name, _sourceWadName, data),
+                "PNAMES" => new PatchNamesLump(name, _sourceWadName, data),
+                "TEXTURE1" or "TEXTURE2" => new TextureLump(name, _sourceWadName, data),
+                "GENMIDI" => new MidiLump(name, _sourceWadName),
+                "DMXGUS" or "DMXGUSC" => new GravisLump(name, _sourceWadName, Encoding.ASCII.GetString(data)),
+                _ when name.StartsWith("DEMO") => new DemoLump(name, _sourceWadName),
+                _ when name.StartsWith("DP") => new SpeakerEffectsLump(name, _sourceWadName),
+                _ when name.StartsWith("DS") => CreateSoundLump(name, data),
+                _ when name.StartsWith("D_") => new MusicLump(name, _sourceWadName, data),
+                _ => new BinaryLump(name, _sourceWadName, data)
+            };
+        }
+
+        private ILump CreateSoundLump(string name, byte[] data)
+        {
+            try
+            {
+                return new SoundLump(name, _sourceWadName, data);
+            }
+            catch (FormatException)
+            {
+                // Fall back to binary lump if sound parsing fails
+                return new BinaryLump(name, _sourceWadName, data);
             }
         }
 
         public void Dispose()
         {
-            _reader.Dispose();
+            _reader?.Dispose();
             _reader = null;
         }
     }

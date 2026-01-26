@@ -1,22 +1,28 @@
-﻿namespace WAD.NET.UDMF.Fields
+namespace WAD.NET.UDMF.Fields
 {
     /// <summary>
-    /// Vertex
+    /// UDMF Vertex definition.
     /// </summary>
     /// <remarks>
     /// As defined by UDMF 1.1
     /// <see cref="https://github.com/coelckers/gzdoom/blob/master/specs/udmf.txt"/>
     /// </remarks>
-    struct Vertex
+    public struct Vertex
     {
         /// <summary>
         /// X coordinate. No valid default.
         /// </summary>
-        double x;
+        public double X { get; set; }
 
         /// <summary>
         /// Y coordinate. No valid default.
         /// </summary>
-        double y;
+        public double Y { get; set; }
+
+        public Vertex(double x, double y)
+        {
+            X = x;
+            Y = y;
+        }
     }
 }

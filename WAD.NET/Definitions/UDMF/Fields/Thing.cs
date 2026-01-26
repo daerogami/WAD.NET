@@ -1,88 +1,90 @@
-﻿namespace WAD.NET.UDMF.Fields
+using WAD.NET;
+
+namespace WAD.NET.UDMF.Fields
 {
     /// <summary>
-    /// Thing
+    /// UDMF Thing definition.
     /// </summary>
     /// <remarks>
     /// As defined by UDMF 1.1
     /// <see cref="https://github.com/coelckers/gzdoom/blob/master/specs/udmf.txt"/>
     /// </remarks>
-    struct Thing
+    public struct Thing
     {
         /// <summary>
         /// Thing ID. Default = 0.
         /// </summary>
-        int id;
+        public int Id { get; set; }
 
         /// <summary>
         /// X coordinate. No valid default.
         /// </summary>
-        int x;
+        public double X { get; set; }
 
         /// <summary>
         /// Y coordinate. No valid default.
         /// </summary>
-        int y;
+        public double Y { get; set; }
 
         /// <summary>
         /// Z height relative to floor. Default = 0. (Relative to ceiling for SPAWNCEILING items).
         /// </summary>
-        double height;
+        public double Height { get; set; }
 
         /// <summary>
         /// Map angle of thing in degrees. Default = 0 (East).
         /// </summary>
-        int angle;
+        public int Angle { get; set; }
 
         /// <summary>
         /// DoomedNum. No valid default.
         /// </summary>
-        int type;
+        public int Type { get; set; }
 
         /// <summary>
         /// true = in skill 1.
         /// </summary>
-        bool skill1;
+        public bool Skill1 { get; set; }
 
         /// <summary>
         /// true = in skill 2.
         /// </summary>
-        bool skill2;
+        public bool Skill2 { get; set; }
 
         /// <summary>
         /// true = in skill 3.
         /// </summary>
-        bool skill3;
+        public bool Skill3 { get; set; }
 
         /// <summary>
         /// true = in skill 4.
         /// </summary>
-        bool skill4;
+        public bool Skill4 { get; set; }
 
         /// <summary>
         /// true = in skill 5.
         /// </summary>
-        bool skill5;
+        public bool Skill5 { get; set; }
 
         /// <summary>
         /// true = thing is deaf.
         /// </summary>
-        bool ambush;
+        public bool Ambush { get; set; }
 
         /// <summary>
         /// true = in SP mode.
         /// </summary>
-        bool single;
+        public bool Single { get; set; }
 
         /// <summary>
         /// true = in DM mode.
         /// </summary>
-        bool dm;
+        public bool Dm { get; set; }
 
         /// <summary>
         /// true = in Coop.
         /// </summary>
-        bool coop;
+        public bool Coop { get; set; }
 
         /// <summary>
         /// true = MBF friend.
@@ -90,7 +92,7 @@
         /// <remarks>
         /// MBF friend flag not supported in Strife/Heretic/Hexen namespaces.
         /// </remarks>
-        bool friend;
+        public bool Friend { get; set; }
 
         /// <summary>
         /// true = dormant thing.
@@ -99,132 +101,124 @@
         /// Hexen flag; not supported in Doom/Strife/Heretic namespaces.
         /// </remarks>
         [HexenFlag]
-        bool dormant;
+        public bool Dormant { get; set; }
 
         /// <summary>
         /// true = Present for pclass 1.
         /// </summary>
-        /// <remarks>
-        /// Hexen flag; not supported in Doom/Strife/Heretic namespaces.
-        /// </remarks>
         [HexenFlag]
-        bool class1;
+        public bool Class1 { get; set; }
 
         /// <summary>
         /// true = Present for pclass 2.
         /// </summary>
-        /// <remarks>
-        /// Hexen flag; not supported in Doom/Strife/Heretic namespaces.
-        /// </remarks>
         [HexenFlag]
-        bool class2;
+        public bool Class2 { get; set; }
 
         /// <summary>
         /// true = Present for pclass 3.
         /// </summary>
-        /// <remarks>
-        /// Hexen flag; not supported in Doom/Strife/Heretic namespaces.
-        /// </remarks>
         [HexenFlag]
-        bool class3;
+        public bool Class3 { get; set; }
 
         /// <summary>
         /// true = Strife NPC flag.
         /// </summary>
-        /// <remarks>
-        /// Strife specific flags. Support for other games is not defined by default and these flags should be ignored when reading maps not for the Strife namespace or maps for a port which supports these flags.
-        /// </remarks>
         [StrifeFlag]
-        bool standing;
+        public bool Standing { get; set; }
 
         /// <summary>
         /// true = Strife ally flag.
         /// </summary>
-        /// <remarks>
-        /// Strife specific flags. Support for other games is not defined by default and these flags should be ignored when reading maps not for the Strife namespace or maps for a port which supports these flags.
-        /// </remarks>
         [StrifeFlag]
-        bool strifeally;
+        public bool StrifeAlly { get; set; }
 
         /// <summary>
         /// true = Strife translucency flag.
         /// </summary>
-        /// <remarks>
-        /// Strife specific flags. Support for other games is not defined by default and these flags should be ignored when reading maps not for the Strife namespace or maps for a port which supports these flags.
-        /// </remarks>
         [StrifeFlag]
-        bool translucent;
+        public bool Translucent { get; set; }
 
         /// <summary>
         /// true = Strife invisibility flag.
         /// </summary>
-        /// <remarks>
-        /// Strife specific flags. Support for other games is not defined by default and these flags should be ignored when reading maps not for the Strife namespace or maps for a port which supports these flags.
-        /// </remarks>
         [StrifeFlag]
-        bool invisible;
-
-
-        // Note: suggested editor defaults for all skill, gamemode, and player
-        // class flags is true rather than the UDMF default of false.
+        public bool Invisible { get; set; }
 
         /// <summary>
-        /// Scripting special. Default = 0;
+        /// Scripting special. Default = 0.
         /// </summary>
-        /// <remarks>
-        /// Thing special semantics are only defined for the Hexen namespace or ports which implement this feature in their own namespace.
-        /// </remarks>
         [HexenFlag]
-        int special;
+        public int Special { get; set; }
 
         /// <summary>
         /// Argument 0. Default = 0.
         /// </summary>
-        /// <remarks>
-        /// Thing special semantics are only defined for the Hexen namespace or ports which implement this feature in their own namespace.
-        /// </remarks>
         [HexenFlag]
-        int arg0;
+        public int Arg0 { get; set; }
 
         /// <summary>
         /// Argument 1. Default = 0.
         /// </summary>
-        /// <remarks>
-        /// Thing special semantics are only defined for the Hexen namespace or ports which implement this feature in their own namespace.
-        /// </remarks>
         [HexenFlag]
-        int arg1;
+        public int Arg1 { get; set; }
 
         /// <summary>
         /// Argument 2. Default = 0.
         /// </summary>
-        /// <remarks>
-        /// Thing special semantics are only defined for the Hexen namespace or ports which implement this feature in their own namespace.
-        /// </remarks>
         [HexenFlag]
-        int arg2;
+        public int Arg2 { get; set; }
 
         /// <summary>
         /// Argument 3. Default = 0.
         /// </summary>
-        /// <remarks>
-        /// Thing special semantics are only defined for the Hexen namespace or ports which implement this feature in their own namespace.
-        /// </remarks>
         [HexenFlag]
-        int arg3;
+        public int Arg3 { get; set; }
 
         /// <summary>
         /// Argument 4. Default = 0.
         /// </summary>
-        /// <remarks>
-        /// Thing special semantics are only defined for the Hexen namespace or ports which implement this feature in their own namespace.
-        /// </remarks>
         [HexenFlag]
-        int arg4;
+        public int Arg4 { get; set; }
 
         /// <summary>
         /// A comment. Implementors should attach no special semantic meaning to this field.
         /// </summary>
-        string comment;
+        public string Comment { get; set; }
+
+        public Thing()
+        {
+            Id = 0;
+            X = 0;
+            Y = 0;
+            Height = 0;
+            Angle = 0;
+            Type = 0;
+            Skill1 = true;
+            Skill2 = true;
+            Skill3 = true;
+            Skill4 = true;
+            Skill5 = true;
+            Ambush = false;
+            Single = true;
+            Dm = true;
+            Coop = true;
+            Friend = false;
+            Dormant = false;
+            Class1 = false;
+            Class2 = false;
+            Class3 = false;
+            Standing = false;
+            StrifeAlly = false;
+            Translucent = false;
+            Invisible = false;
+            Special = 0;
+            Arg0 = 0;
+            Arg1 = 0;
+            Arg2 = 0;
+            Arg3 = 0;
+            Arg4 = 0;
+            Comment = null;
+        }
     }
 }

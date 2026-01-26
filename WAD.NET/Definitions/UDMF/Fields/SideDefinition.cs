@@ -1,189 +1,201 @@
-﻿using System;
-using WAD.NET.Concrete;
+using WAD.NET.UDMF.Fields;
 
 namespace WAD.NET.UDMF.Fields
 {
     /// <summary>
-    /// Side Definition
+    /// UDMF Side Definition.
     /// </summary>
     /// <remarks>
-    /// As defined by UDMF 1.1 and zDoom extentions v1.15
+    /// As defined by UDMF 1.1 and zDoom extensions v1.15
     /// <see cref="https://github.com/coelckers/gzdoom/blob/master/specs/udmf.txt"/>
     /// <seealso cref="https://github.com/doomtech/slade/blob/trunk/udmf_zdoom.txt"/>
     /// </remarks>
-    struct SideDefinition
+    public struct SideDefinition
     {
         /// <summary>
         /// X Offset. Default = 0.
         /// </summary>
-        int offsetx;
+        public int OffsetX { get; set; }
 
         /// <summary>
         /// Y Offset. Default = 0.
         /// </summary>
-        int offsety;
+        public int OffsetY { get; set; }
 
         /// <summary>
         /// Upper texture. Default = "-".
         /// </summary>
-        string texturetop;
+        public string TextureTop { get; set; }
 
         /// <summary>
         /// Lower texture. Default = "-".
         /// </summary>
-        string texturebottom;
+        public string TextureBottom { get; set; }
 
         /// <summary>
         /// Middle texture. Default = "-".
         /// </summary>
-        string texturemiddle;
+        public string TextureMiddle { get; set; }
 
         /// <summary>
         /// Sector index. No valid default.
         /// </summary>
-        int sector;
+        public int Sector { get; set; }
 
         /// <summary>
-        /// A comment. Implementors should attach no special semantic meaning to this field.
+        /// A comment.
         /// </summary>
-        string comment;
+        public string Comment { get; set; }
 
         /// <summary>
-        /// // X scale for upper texture, Default = 1.0.
-        /// </summary>
-        [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        float scalex_top;
-
-        /// <summary>
-        /// y scale for upper texture, Default = 1.0.
+        /// X scale for upper texture. Default = 1.0.
         /// </summary>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        float scaley_top;
+        public float ScaleXTop { get; set; }
 
         /// <summary>
-        /// X scale for mid texture, Default = 1.0.
+        /// Y scale for upper texture. Default = 1.0.
         /// </summary>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        float scalex_mid;
+        public float ScaleYTop { get; set; }
 
         /// <summary>
-        /// y scale for mid texture, Default = 1.0.
+        /// X scale for mid texture. Default = 1.0.
         /// </summary>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        float scaley_mid;
+        public float ScaleXMid { get; set; }
 
         /// <summary>
-        /// X scale for lower texture, Default = 1.0.
+        /// Y scale for mid texture. Default = 1.0.
         /// </summary>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        float scalex_bottom;
+        public float ScaleYMid { get; set; }
 
         /// <summary>
-        /// y scale for lower texture, Default = 1.0.
+        /// X scale for lower texture. Default = 1.0.
         /// </summary>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        float scaley_bottom;
+        public float ScaleXBottom { get; set; }
 
         /// <summary>
-        /// X offset for upper texture, Default = 0.0.
+        /// Y scale for lower texture. Default = 1.0.
         /// </summary>
-        /// <remarks>
-        /// When global texture offsets are used they will be added on top of these values.
-        /// </remarks>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        float offsetx_top;
+        public float ScaleYBottom { get; set; }
 
         /// <summary>
-        /// y offset for upper texture, Default = 0.0.
+        /// X offset for upper texture. Default = 0.0.
         /// </summary>
-        /// <remarks>
-        /// When global texture offsets are used they will be added on top of these values.
-        /// </remarks>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        float offsety_top;
+        public float OffsetXTop { get; set; }
 
         /// <summary>
-        /// X offset for mid texture, Default = 0.0.
+        /// Y offset for upper texture. Default = 0.0.
         /// </summary>
-        /// <remarks>
-        /// When global texture offsets are used they will be added on top of these values.
-        /// </remarks>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        float offsetx_mid;
+        public float OffsetYTop { get; set; }
 
         /// <summary>
-        /// y offset for mid texture, Default = 0.0.
+        /// X offset for mid texture. Default = 0.0.
         /// </summary>
-        /// <remarks>
-        /// When global texture offsets are used they will be added on top of these values.
-        /// </remarks>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        float offsety_mid;
+        public float OffsetXMid { get; set; }
 
         /// <summary>
-        /// X offset for lower texture, Default = 0.0.
+        /// Y offset for mid texture. Default = 0.0.
         /// </summary>
-        /// <remarks>
-        /// When global texture offsets are used they will be added on top of these values.
-        /// </remarks>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        float offsetx_bottom;
+        public float OffsetYMid { get; set; }
 
         /// <summary>
-        /// y offset for lower texture, Default = 0.0.
+        /// X offset for lower texture. Default = 0.0.
         /// </summary>
-        /// <remarks>
-        /// When global texture offsets are used they will be added on top of these values.
-        /// </remarks>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        float offsety_bottom;
+        public float OffsetXBottom { get; set; }
+
+        /// <summary>
+        /// Y offset for lower texture. Default = 0.0.
+        /// </summary>
+        [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
+        public float OffsetYBottom { get; set; }
 
         /// <summary>
         /// This side's light level. Default is 0.
         /// </summary>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        int light;
+        public int Light { get; set; }
 
         /// <summary>
-        /// true = 'light' is an absolute value. Default is relative to the owning sector's light level.
+        /// true = 'light' is an absolute value.
         /// </summary>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        bool lightabsolute;
+        public bool LightAbsolute { get; set; }
 
         /// <summary>
-        /// true = This side's relative lighting is used even in foggy sectors. Default is to disable relative lighting in foggy sectors.
+        /// true = relative lighting is used even in foggy sectors.
         /// </summary>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        bool lightfog;
+        public bool LightFog { get; set; }
 
         /// <summary>
         /// Disables use of fake contrast on this sidedef.
         /// </summary>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        bool nofakecontrast;
+        public bool NoFakeContrast { get; set; }
 
         /// <summary>
         /// Use smooth fake contrast.
         /// </summary>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        bool smoothlighting;
+        public bool SmoothLighting { get; set; }
 
         /// <summary>
         /// Side's mid textures are clipped to floor and ceiling.
         /// </summary>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        bool clipmidtex;
+        public bool ClipMidTex { get; set; }
 
         /// <summary>
         /// Side's mid textures are wrapped.
         /// </summary>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        bool wrapmidtex;
+        public bool WrapMidTex { get; set; }
 
         /// <summary>
         /// Disables decals on the sidedef.
         /// </summary>
         [FieldSpecification(Specification.UDMF_ZDOOM, 1, 15)]
-        bool nodecals;
+        public bool NoDecals { get; set; }
+
+        public SideDefinition()
+        {
+            OffsetX = 0;
+            OffsetY = 0;
+            TextureTop = "-";
+            TextureBottom = "-";
+            TextureMiddle = "-";
+            Sector = 0;
+            Comment = null;
+            ScaleXTop = 1.0f;
+            ScaleYTop = 1.0f;
+            ScaleXMid = 1.0f;
+            ScaleYMid = 1.0f;
+            ScaleXBottom = 1.0f;
+            ScaleYBottom = 1.0f;
+            OffsetXTop = 0;
+            OffsetYTop = 0;
+            OffsetXMid = 0;
+            OffsetYMid = 0;
+            OffsetXBottom = 0;
+            OffsetYBottom = 0;
+            Light = 0;
+            LightAbsolute = false;
+            LightFog = false;
+            NoFakeContrast = false;
+            SmoothLighting = false;
+            ClipMidTex = false;
+            WrapMidTex = false;
+            NoDecals = false;
+        }
     }
 }
