@@ -1,0 +1,29 @@
+{
+  "WadPaths": {
+    "_comment": "This is a template file. Configure your WAD paths in user secrets instead.",
+    "_instructions": "Run: dotnet user-secrets set 'WadPaths:Doom' 'C:\\Games\\DOOM\\DOOM.WAD'",
+
+    "Doom": "",
+    "Doom2": "",
+    "Plutonia": "",
+    "Tnt": "",
+    "Heretic": "",
+    "Hexen": "",
+    "Strife": "",
+    "FreeDoom1": "",
+    "FreeDoom2": "",
+
+    "Pwads": {
+      "Eviternity": "",
+      "AncientAliens": "",
+      "Sunlust": "",
+      "Scythe2": ""
+    },
+
+    "Pk3s": {
+      "BrutalDoom": "",
+      "Gzdoom_Pk3": "",
+      "CustomMod": ""
+    }
+  }
+}

@@ -74,7 +74,7 @@ namespace WAD.NET.Concrete
 
                 if (size == 0)
                 {
-                    HandleMarkerLump(name);
+                    HandleMarkerLump(name, wad);
                 }
                 else
                 {
@@ -187,7 +187,7 @@ namespace WAD.NET.Concrete
             return Encoding.ASCII.GetString(nameBytes, 0, length).ToUpperInvariant();
         }
 
-        private void HandleMarkerLump(string name)
+        private void HandleMarkerLump(string name, Wad wad)
         {
             switch (name)
             {
@@ -207,6 +207,12 @@ namespace WAD.NET.Concrete
                 case "SS_END":
                     _readingSprites = false;
                     break;
+            }
+
+            // Add map markers to the lump queue so MapReader can find them
+            if (MapDetector.IsMapMarker(name))
+            {
+                wad.Lumps.Enqueue(new BinaryLump(name, _sourceWadName, Array.Empty<byte>()));
             }
         }
 

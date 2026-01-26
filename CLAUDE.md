@@ -113,7 +113,7 @@ mod.pk3 (ZIP format)
 ## Known Issues & Technical Debt
 
 ### Critical Bugs
-1. **PWAD detection bug** - `WadReader.cs:168` returns `WadType.IWAD` for PWAD files
+None currently known.
 
 ### Missing Implementations
 - LZSS compression (throws `NotImplementedException`)
@@ -123,9 +123,7 @@ mod.pk3 (ZIP format)
 - `IWadValidator` implementation
 
 ### Code Quality Issues
-- `CompressedWadReader` duplicates `WadReader` logic
 - UDMF struct fields are private (inaccessible)
-- `HandleMarkerLump()` is empty
 - Test data paths are Windows-specific absolute paths
 
 ## Implementation Roadmap

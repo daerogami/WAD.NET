@@ -652,36 +652,18 @@ public class WadReader : IArchiveReader
 
 ---
 
-## Task 3.8: Update CompressedWadReader
+## Task 3.8: Remove CompressedWadReader (COMPLETED)
 
 ### Problem
-Current `CompressedWadReader` duplicates `WadReader` code and doesn't handle compression.
+The original `CompressedWadReader` duplicated `WadReader` code and didn't handle compression correctly.
 
 ### Solution
-Remove `CompressedWadReader` and use `ArchiveReaderFactory` instead:
+`CompressedWadReader` was removed from the codebase. Use `ArchiveReaderFactory` instead:
 
 ```csharp
-// Before (incorrect)
-var reader = new CompressedWadReader("mod.pk3");  // Throws
-
-// After (correct)
+// Use the unified factory for all archive types
 var reader = ArchiveReaderFactory.Open("mod.pk3");  // Returns Pk3Reader
-```
-
-Consider keeping a thin wrapper for backwards compatibility:
-```csharp
-[Obsolete("Use ArchiveReaderFactory.Open() instead")]
-public class CompressedWadReader : IDisposable
-{
-    private readonly IArchiveReader _reader;
-
-    public CompressedWadReader(string filePath)
-    {
-        _reader = ArchiveReaderFactory.Open(filePath);
-    }
-
-    public void Dispose() => _reader.Dispose();
-}
+var reader = ArchiveReaderFactory.Open("DOOM.WAD"); // Returns WadArchiveReader
 ```
 
 ---
