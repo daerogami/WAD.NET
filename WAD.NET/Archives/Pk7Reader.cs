@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using SharpCompress.Archives.SevenZip;
+using SharpCompress.Readers;
 using WAD.NET.Enums;
 
 namespace WAD.NET.Archives
@@ -13,6 +14,7 @@ namespace WAD.NET.Archives
     public sealed class Pk7Reader : IArchiveReader
     {
         private readonly SevenZipArchive _archive;
+        private readonly Stream? _fileStream; // We manage the file stream ourselves for proper disposal
         private readonly Dictionary<string, LumpEntry> _entries;
         private readonly Dictionary<string, string> _entryPaths; // Name -> FullPath mapping
         private bool _disposed;
@@ -33,7 +35,11 @@ namespace WAD.NET.Archives
                 throw new FileNotFoundException("PK7 file not found", filePath);
 
             Path = filePath;
-            _archive = SevenZipArchive.Open(filePath);
+            // Open the file stream ourselves so we can properly dispose it
+            // SharpCompress SevenZipArchive.Open(filePath) doesn't reliably release file handles on Windows
+            _fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var options = new ReaderOptions { LeaveStreamOpen = false };
+            _archive = SevenZipArchive.Open(_fileStream, options);
             (_entries, _entryPaths) = BuildEntryIndex();
         }
 
@@ -45,9 +51,9 @@ namespace WAD.NET.Archives
         public Pk7Reader(Stream stream, bool leaveOpen = false)
         {
             Path = string.Empty;
-            // Note: SharpCompress SevenZipArchive.Open will take ownership of the stream
-            // The leaveOpen parameter is not directly supported by SharpCompress for 7z
-            _archive = SevenZipArchive.Open(stream);
+            _fileStream = null; // We don't own the stream in this case
+            var options = new ReaderOptions { LeaveStreamOpen = leaveOpen };
+            _archive = SevenZipArchive.Open(stream, options);
             (_entries, _entryPaths) = BuildEntryIndex();
         }
 
@@ -295,8 +301,27 @@ namespace WAD.NET.Archives
         {
             if (!_disposed)
             {
-                _archive?.Dispose();
                 _disposed = true;
+
+                // Dispose archive first
+                try
+                {
+                    _archive?.Dispose();
+                }
+                catch
+                {
+                    // Ignore disposal errors from SharpCompress
+                }
+
+                // Then dispose our file stream to release the file handle
+                try
+                {
+                    _fileStream?.Dispose();
+                }
+                catch
+                {
+                    // Ignore disposal errors
+                }
             }
         }
     }
