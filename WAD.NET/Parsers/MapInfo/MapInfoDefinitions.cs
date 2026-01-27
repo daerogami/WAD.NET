@@ -30,7 +30,7 @@ namespace WAD.NET.Parsers.MapInfo
         /// <summary>
         /// Game-specific settings.
         /// </summary>
-        public GameInfo GameInfo { get; set; }
+        public GameInfo? GameInfo { get; set; }
 
         /// <summary>
         /// Whether episodes should be cleared before adding new ones.
@@ -44,31 +44,31 @@ namespace WAD.NET.Parsers.MapInfo
     public class MapDefinition
     {
         /// <summary>Map lump name (e.g., E1M1, MAP01).</summary>
-        public string MapLump { get; set; }
+        public string MapLump { get; set; } = string.Empty;
 
         /// <summary>Display name for the map.</summary>
-        public string NiceName { get; set; }
+        public string NiceName { get; set; } = string.Empty;
 
         /// <summary>Level number for sorting/display.</summary>
         public int LevelNum { get; set; }
 
         /// <summary>Titlepic lump for intermission.</summary>
-        public string TitlePatch { get; set; }
+        public string? TitlePatch { get; set; }
 
         /// <summary>Next map after normal exit.</summary>
-        public string Next { get; set; }
+        public string? Next { get; set; }
 
         /// <summary>Next map after secret exit.</summary>
-        public string SecretNext { get; set; }
+        public string? SecretNext { get; set; }
 
         /// <summary>Sky texture name.</summary>
-        public string Sky1 { get; set; }
+        public string? Sky1 { get; set; }
 
         /// <summary>Secondary sky texture name (for double-sky effects).</summary>
-        public string Sky2 { get; set; }
+        public string? Sky2 { get; set; }
 
         /// <summary>Music lump name.</summary>
-        public string Music { get; set; }
+        public string? Music { get; set; }
 
         /// <summary>Cluster this map belongs to.</summary>
         public int Cluster { get; set; }
@@ -92,10 +92,10 @@ namespace WAD.NET.Parsers.MapInfo
         public bool Lightning { get; set; }
 
         /// <summary>Fog color.</summary>
-        public string Fade { get; set; }
+        public string? Fade { get; set; }
 
         /// <summary>Outside fog color.</summary>
-        public string OutsideFog { get; set; }
+        public string? OutsideFog { get; set; }
 
         /// <summary>Gravity multiplier (1.0 = normal).</summary>
         public float? Gravity { get; set; }
@@ -104,28 +104,28 @@ namespace WAD.NET.Parsers.MapInfo
         public float? AirControl { get; set; }
 
         /// <summary>Border flat for status bar.</summary>
-        public string BorderTexture { get; set; }
+        public string? BorderTexture { get; set; }
 
         /// <summary>Entering message.</summary>
-        public string EnterPic { get; set; }
+        public string? EnterPic { get; set; }
 
         /// <summary>Exiting message.</summary>
-        public string ExitPic { get; set; }
+        public string? ExitPic { get; set; }
 
         /// <summary>Lookup string for level name.</summary>
-        public string LookupName { get; set; }
+        public string? LookupName { get; set; }
 
         /// <summary>SNDSEQ environment.</summary>
-        public string SndSeq { get; set; }
+        public string? SndSeq { get; set; }
 
         /// <summary>SNDINFO environment.</summary>
-        public string SndInfo { get; set; }
+        public string? SndInfo { get; set; }
 
         /// <summary>CD track number.</summary>
         public int? CdTrack { get; set; }
 
         /// <summary>Intermission music.</summary>
-        public string InterMusic { get; set; }
+        public string? InterMusic { get; set; }
 
         /// <summary>Whether map uses even lighting.</summary>
         public bool EvenLighting { get; set; }
@@ -134,13 +134,13 @@ namespace WAD.NET.Parsers.MapInfo
         public bool SmoothLighting { get; set; }
 
         /// <summary>Author of the map.</summary>
-        public string Author { get; set; }
+        public string? Author { get; set; }
 
         /// <summary>Special actions to run on this map.</summary>
         public List<SpecialAction> SpecialActions { get; } = new List<SpecialAction>();
 
         /// <summary>Map-specific flags.</summary>
-        public MapFlags Flags { get; set; }
+        public MapFlags Flags { get; set; } = new MapFlags();
     }
 
     /// <summary>
@@ -149,7 +149,7 @@ namespace WAD.NET.Parsers.MapInfo
     public class SpecialAction
     {
         /// <summary>Actor class name.</summary>
-        public string ActorClass { get; set; }
+        public string ActorClass { get; set; } = string.Empty;
 
         /// <summary>Special type to execute.</summary>
         public int Special { get; set; }
@@ -205,25 +205,25 @@ namespace WAD.NET.Parsers.MapInfo
         public int Id { get; set; }
 
         /// <summary>Flat for text screen background.</summary>
-        public string Flat { get; set; }
+        public string? Flat { get; set; }
 
         /// <summary>Music for cluster screens.</summary>
-        public string Music { get; set; }
+        public string? Music { get; set; }
 
         /// <summary>Text shown when entering cluster.</summary>
-        public string EnterText { get; set; }
+        public string? EnterText { get; set; }
 
         /// <summary>Text shown when exiting cluster.</summary>
-        public string ExitText { get; set; }
+        public string? ExitText { get; set; }
 
         /// <summary>Lookup key for enter text.</summary>
-        public string EnterTextLookup { get; set; }
+        public string? EnterTextLookup { get; set; }
 
         /// <summary>Lookup key for exit text.</summary>
-        public string ExitTextLookup { get; set; }
+        public string? ExitTextLookup { get; set; }
 
         /// <summary>Background picture.</summary>
-        public string Pic { get; set; }
+        public string? Pic { get; set; }
 
         /// <summary>Whether this is a hub cluster.</summary>
         public bool Hub { get; set; }
@@ -244,19 +244,19 @@ namespace WAD.NET.Parsers.MapInfo
         public int Number { get; set; }
 
         /// <summary>Map to start the episode.</summary>
-        public string StartMap { get; set; }
+        public string StartMap { get; set; } = string.Empty;
 
         /// <summary>Episode name.</summary>
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>Episode key for selection.</summary>
         public char Key { get; set; }
 
         /// <summary>Lookup key for name.</summary>
-        public string LookupName { get; set; }
+        public string? LookupName { get; set; }
 
         /// <summary>Patch graphic for episode selection.</summary>
-        public string PicName { get; set; }
+        public string? PicName { get; set; }
 
         /// <summary>Whether to skip episode in selection.</summary>
         public bool NoSkillMenu { get; set; }
@@ -271,7 +271,7 @@ namespace WAD.NET.Parsers.MapInfo
     public class SkillDefinition
     {
         /// <summary>Skill name.</summary>
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>Ammo multiplier.</summary>
         public float? AmmoFactor { get; set; }
@@ -310,13 +310,13 @@ namespace WAD.NET.Parsers.MapInfo
         public bool MustConfirm { get; set; }
 
         /// <summary>Confirmation message.</summary>
-        public string MustConfirmMessage { get; set; }
+        public string? MustConfirmMessage { get; set; }
 
         /// <summary>Pic name for skill selection.</summary>
-        public string PicName { get; set; }
+        public string? PicName { get; set; }
 
         /// <summary>Text color for skill.</summary>
-        public string TextColor { get; set; }
+        public string? TextColor { get; set; }
     }
 
     /// <summary>
@@ -325,25 +325,25 @@ namespace WAD.NET.Parsers.MapInfo
     public class GameInfo
     {
         /// <summary>Title screen background.</summary>
-        public string TitlePage { get; set; }
+        public string? TitlePage { get; set; }
 
         /// <summary>Credit screen background.</summary>
-        public string CreditPage { get; set; }
+        public string? CreditPage { get; set; }
 
         /// <summary>Finale background.</summary>
-        public string FinaleFlat { get; set; }
+        public string? FinaleFlat { get; set; }
 
         /// <summary>Finale music.</summary>
-        public string FinaleMusic { get; set; }
+        public string? FinaleMusic { get; set; }
 
         /// <summary>Info page.</summary>
-        public string InfoPage { get; set; }
+        public string? InfoPage { get; set; }
 
         /// <summary>Quit screen messages.</summary>
         public List<string> QuitMessages { get; } = new List<string>();
 
         /// <summary>Border flat.</summary>
-        public string BorderFlat { get; set; }
+        public string? BorderFlat { get; set; }
 
         /// <summary>Player class names.</summary>
         public List<string> PlayerClasses { get; } = new List<string>();

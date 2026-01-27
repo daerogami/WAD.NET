@@ -23,12 +23,12 @@ namespace WAD.NET.UDMF
         /// <summary>
         /// Floor texture name.
         /// </summary>
-        public string TextureFloor { get; set; }
+        public string TextureFloor { get; set; } = string.Empty;
 
         /// <summary>
         /// Ceiling texture name.
         /// </summary>
-        public string TextureCeiling { get; set; }
+        public string TextureCeiling { get; set; } = string.Empty;
 
         /// <summary>
         /// Light level (0-255).
@@ -43,7 +43,7 @@ namespace WAD.NET.UDMF
         /// <summary>
         /// Comment (not used by engine).
         /// </summary>
-        public string Comment { get; set; }
+        public string? Comment { get; set; }
 
         // ZDoom extensions
         /// <summary>

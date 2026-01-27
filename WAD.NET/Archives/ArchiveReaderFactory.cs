@@ -12,7 +12,7 @@ namespace WAD.NET.Archives
         private static readonly byte[] WadMagicIWAD = { (byte)'I', (byte)'W', (byte)'A', (byte)'D' };
         private static readonly byte[] WadMagicPWAD = { (byte)'P', (byte)'W', (byte)'A', (byte)'D' };
         private static readonly byte[] ZipMagic = { (byte)'P', (byte)'K', 0x03, 0x04 };
-        private static readonly byte[] SevenZipMagic = { (byte)'7', (byte)'z', 0xBC, 0xAF };
+        private static readonly byte[] SevenZipMagic = { 0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C };
 
         /// <summary>
         /// Opens an archive file or folder with the appropriate reader.
@@ -40,9 +40,7 @@ namespace WAD.NET.Archives
             {
                 ArchiveTypeDetected.WAD => new WadArchiveReader(path),
                 ArchiveTypeDetected.ZIP => new Pk3Reader(path),
-                ArchiveTypeDetected.SevenZip => throw new NotSupportedException(
-                    "PK7 (7z) archives require the SharpCompress library. " +
-                    "Add the SharpCompress NuGet package and use Pk7Reader directly."),
+                ArchiveTypeDetected.SevenZip => new Pk7Reader(path),
                 _ => throw new FormatException($"Unknown archive format: {path}")
             };
         }
@@ -69,12 +67,14 @@ namespace WAD.NET.Archives
                 return ArchiveTypeDetected.Unknown;
 
             var originalPosition = stream.Position;
-            var magic = new byte[4];
+            // Read 6 bytes to accommodate 7z magic (6 bytes)
+            var magic = new byte[6];
 
             try
             {
                 stream.Position = 0;
-                if (stream.Read(magic, 0, 4) < 4)
+                var bytesRead = stream.Read(magic, 0, 6);
+                if (bytesRead < 4)
                     return ArchiveTypeDetected.Unknown;
 
                 // Check WAD (IWAD or PWAD)
@@ -89,8 +89,8 @@ namespace WAD.NET.Archives
                     return ArchiveTypeDetected.ZIP;
                 }
 
-                // Check 7z/PK7
-                if (MatchesMagic(magic, SevenZipMagic))
+                // Check 7z/PK7 (requires 6 bytes)
+                if (bytesRead >= 6 && MatchesMagic(magic, SevenZipMagic))
                 {
                     return ArchiveTypeDetected.SevenZip;
                 }

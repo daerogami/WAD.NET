@@ -184,7 +184,7 @@ namespace WAD.NET.UDMF.Fields
         /// <summary>
         /// A comment. Implementors should attach no special semantic meaning to this field.
         /// </summary>
-        public string Comment { get; set; }
+        public string? Comment { get; set; }
 
         public Thing()
         {

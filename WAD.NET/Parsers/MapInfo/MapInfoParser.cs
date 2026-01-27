@@ -135,7 +135,7 @@ namespace WAD.NET.Parsers.MapInfo
             return tokens;
         }
 
-        private string PeekToken()
+        private string? PeekToken()
         {
             return _tokens.Count > 0 ? _tokens.Peek() : null;
         }
@@ -233,8 +233,8 @@ namespace WAD.NET.Parsers.MapInfo
                     case "titlepatch": def.TitlePatch = ParseString(); break;
                     case "next": def.Next = ParseString(); break;
                     case "secretnext": def.SecretNext = ParseString(); break;
-                    case "sky1": def.Sky1 = ParseString(); TryConsume(","); if (_tokens.Count > 0 && char.IsDigit(PeekToken()[0])) ParseFloat(); break;
-                    case "sky2": def.Sky2 = ParseString(); TryConsume(","); if (_tokens.Count > 0 && char.IsDigit(PeekToken()[0])) ParseFloat(); break;
+                    case "sky1": def.Sky1 = ParseString(); TryConsume(","); if (_tokens.Count > 0 && PeekToken() is string s1 && s1.Length > 0 && char.IsDigit(s1[0])) ParseFloat(); break;
+                    case "sky2": def.Sky2 = ParseString(); TryConsume(","); if (_tokens.Count > 0 && PeekToken() is string s2 && s2.Length > 0 && char.IsDigit(s2[0])) ParseFloat(); break;
                     case "music": def.Music = ParseString(); break;
                     case "intermusic": def.InterMusic = ParseString(); break;
                     case "cluster": def.Cluster = ParseInt(); break;
@@ -399,7 +399,7 @@ namespace WAD.NET.Parsers.MapInfo
             // Check for optional properties before the block
             while (_tokens.Count > 0 && PeekToken() != "{")
             {
-                var next = PeekToken().ToLowerInvariant();
+                var next = PeekToken()?.ToLowerInvariant() ?? "";
                 if (next == "teaser")
                 {
                     _tokens.Dequeue();

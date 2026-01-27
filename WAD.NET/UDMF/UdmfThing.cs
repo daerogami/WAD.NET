@@ -138,7 +138,7 @@ namespace WAD.NET.UDMF
         /// <summary>
         /// Comment (not used by engine).
         /// </summary>
-        public string Comment { get; set; }
+        public string? Comment { get; set; }
 
         // ZDoom extensions
         /// <summary>
@@ -164,7 +164,7 @@ namespace WAD.NET.UDMF
         /// <summary>
         /// Render style (ZDoom extension).
         /// </summary>
-        public string RenderStyle { get; set; }
+        public string? RenderStyle { get; set; }
 
         /// <summary>
         /// Alpha/translucency (ZDoom extension).

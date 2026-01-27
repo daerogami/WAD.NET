@@ -614,7 +614,7 @@ namespace WAD.NET.Parsers.Dehacked
                     Sequence = match.Groups[2].Value.Trim()
                 };
             }
-            return null;
+            return null!;
         }
 
         private DehMisc ParseMisc()

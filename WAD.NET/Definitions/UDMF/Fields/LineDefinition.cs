@@ -192,7 +192,7 @@ namespace WAD.NET.UDMF.Fields
         /// <summary>
         /// A comment.
         /// </summary>
-        public string Comment { get; set; }
+        public string? Comment { get; set; }
 
         public LineDefinition()
         {

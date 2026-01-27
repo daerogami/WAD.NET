@@ -31,7 +31,9 @@ namespace WAD.NET.Concrete
 
         public Engine(int id, string name, Version version)
         {
-
+            Id = id;
+            Name = name;
+            Version = version;
         }
     }
 }

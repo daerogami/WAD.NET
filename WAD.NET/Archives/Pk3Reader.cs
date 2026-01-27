@@ -187,7 +187,7 @@ namespace WAD.NET.Archives
         public IEnumerable<LumpEntry> GetEntries() => _entries.Values;
 
         /// <inheritdoc/>
-        public LumpEntry GetEntry(string name)
+        public LumpEntry? GetEntry(string name)
         {
             return _entries.TryGetValue(name, out var entry) ? entry : null;
         }

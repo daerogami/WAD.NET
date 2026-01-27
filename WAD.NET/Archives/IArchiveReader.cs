@@ -30,7 +30,7 @@ namespace WAD.NET.Archives
         /// </summary>
         /// <param name="name">The lump name to search for.</param>
         /// <returns>The lump entry, or null if not found.</returns>
-        LumpEntry GetEntry(string name);
+        LumpEntry? GetEntry(string name);
 
         /// <summary>
         /// Read lump data into a byte array.

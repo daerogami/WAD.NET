@@ -9,9 +9,9 @@ namespace WAD.NET.Definitions
     public class TextureBuilder
     {
         private readonly TextureDefinition _definition;
-        private readonly string[] _patchNames;
+        private readonly string[]? _patchNames;
         private readonly Dictionary<string, DoomPicture> _patches;
-        private readonly Palette _palette;
+        private readonly Palette? _palette;
 
         /// <summary>
         /// Creates a texture builder with explicit patch names.
@@ -24,7 +24,7 @@ namespace WAD.NET.Definitions
             TextureDefinition definition,
             string[] patchNames,
             Dictionary<string, DoomPicture> patches,
-            Palette palette = null)
+            Palette? palette = null)
         {
             _definition = definition ?? throw new ArgumentNullException(nameof(definition));
             _patchNames = patchNames ?? throw new ArgumentNullException(nameof(patchNames));
@@ -40,8 +40,8 @@ namespace WAD.NET.Definitions
         /// <param name="palette">Optional palette for RGBA conversion.</param>
         public TextureBuilder(
             TextureDefinition definition,
-            Func<ushort, DoomPicture> patchLookup,
-            Palette palette = null)
+            Func<ushort, DoomPicture?>? patchLookup,
+            Palette? palette = null)
         {
             _definition = definition ?? throw new ArgumentNullException(nameof(definition));
             _palette = palette;
@@ -133,7 +133,7 @@ namespace WAD.NET.Definitions
         /// </summary>
         public string Name => _definition.Name;
 
-        private DoomPicture GetPatch(ushort patchIndex)
+        private DoomPicture? GetPatch(ushort patchIndex)
         {
             if (_patchNames != null)
             {

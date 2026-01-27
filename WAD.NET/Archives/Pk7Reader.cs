@@ -2,78 +2,97 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using SharpCompress.Archives.SevenZip;
 using WAD.NET.Enums;
 
 namespace WAD.NET.Archives
 {
     /// <summary>
-    /// Reader for unpacked mod folders (development/debug mode).
+    /// Reader for PK7 (7z-based) archives used by ZDoom and GZDoom.
     /// </summary>
-    public sealed class FolderReader : IArchiveReader
+    public sealed class Pk7Reader : IArchiveReader
     {
+        private readonly SevenZipArchive _archive;
         private readonly Dictionary<string, LumpEntry> _entries;
-        private readonly string _basePath;
+        private readonly Dictionary<string, string> _entryPaths; // Name -> FullPath mapping
+        private bool _disposed;
 
         /// <inheritdoc/>
-        public string Path => _basePath;
+        public string Path { get; }
 
         /// <inheritdoc/>
-        public ArchiveType Type => ArchiveType.Folder;
+        public ArchiveType Type => ArchiveType.PK7;
 
         /// <summary>
-        /// Creates a new folder reader.
+        /// Creates a new PK7 reader from a file path.
         /// </summary>
-        /// <param name="folderPath">Path to the folder to read.</param>
-        public FolderReader(string folderPath)
+        /// <param name="filePath">Path to the PK7 file.</param>
+        public Pk7Reader(string filePath)
         {
-            if (!Directory.Exists(folderPath))
-                throw new DirectoryNotFoundException($"Folder not found: {folderPath}");
+            if (!File.Exists(filePath))
+                throw new FileNotFoundException("PK7 file not found", filePath);
 
-            _basePath = System.IO.Path.GetFullPath(folderPath);
-            _entries = BuildEntryIndex();
+            Path = filePath;
+            _archive = SevenZipArchive.Open(filePath);
+            (_entries, _entryPaths) = BuildEntryIndex();
         }
 
-        private Dictionary<string, LumpEntry> BuildEntryIndex()
+        /// <summary>
+        /// Creates a new PK7 reader from a stream.
+        /// </summary>
+        /// <param name="stream">Stream containing the PK7 data.</param>
+        /// <param name="leaveOpen">Whether to leave the stream open when disposed.</param>
+        public Pk7Reader(Stream stream, bool leaveOpen = false)
+        {
+            Path = string.Empty;
+            // Note: SharpCompress SevenZipArchive.Open will take ownership of the stream
+            // The leaveOpen parameter is not directly supported by SharpCompress for 7z
+            _archive = SevenZipArchive.Open(stream);
+            (_entries, _entryPaths) = BuildEntryIndex();
+        }
+
+        private (Dictionary<string, LumpEntry>, Dictionary<string, string>) BuildEntryIndex()
         {
             var entries = new Dictionary<string, LumpEntry>(StringComparer.OrdinalIgnoreCase);
+            var paths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (var file in Directory.EnumerateFiles(_basePath, "*", SearchOption.AllDirectories))
+            foreach (var sevenZipEntry in _archive.Entries)
             {
-                var relativePath = GetRelativePath(_basePath, file).Replace('\\', '/');
-                var fileInfo = new FileInfo(file);
+                // Skip directories
+                if (sevenZipEntry.IsDirectory || string.IsNullOrEmpty(sevenZipEntry.Key))
+                    continue;
 
-                var entry = new LumpEntry
-                {
-                    Name = GetLumpName(relativePath),
-                    FullPath = relativePath,
-                    CompressedSize = fileInfo.Length,
-                    Size = fileInfo.Length,
-                    Category = CategorizeEntry(relativePath)
-                };
-
+                var entry = CreateLumpEntry(sevenZipEntry);
                 var key = entry.Name;
 
                 // Handle duplicates by using full path as key
                 if (entries.ContainsKey(key))
                 {
-                    key = relativePath;
+                    key = sevenZipEntry.Key;
                 }
 
                 entries[key] = entry;
+                paths[key] = sevenZipEntry.Key;
             }
 
-            return entries;
+            return (entries, paths);
         }
 
-        private static string GetRelativePath(string basePath, string fullPath)
+        private LumpEntry CreateLumpEntry(SevenZipArchiveEntry sevenZipEntry)
         {
-            // .NET Standard 2.1 has Path.GetRelativePath
-            return System.IO.Path.GetRelativePath(basePath, fullPath);
+            return new LumpEntry
+            {
+                Name = GetLumpName(sevenZipEntry.Key),
+                FullPath = sevenZipEntry.Key,
+                CompressedSize = sevenZipEntry.CompressedSize,
+                Size = sevenZipEntry.Size,
+                Category = CategorizeEntry(sevenZipEntry.Key)
+            };
         }
 
-        private static string GetLumpName(string relativePath)
+        private static string GetLumpName(string fullPath)
         {
-            var fileName = System.IO.Path.GetFileName(relativePath);
+            var fileName = System.IO.Path.GetFileName(fullPath);
             var nameWithoutExt = System.IO.Path.GetFileNameWithoutExtension(fileName);
 
             // Truncate to 8 chars for WAD compatibility
@@ -107,6 +126,8 @@ namespace WAD.NET.Archives
                 "colormaps" => LumpCategory.Graphic,
                 "brightmaps" => LumpCategory.Texture,
                 "fonts" => LumpCategory.Graphic,
+                "models" => LumpCategory.Unknown,
+                "voxels" => LumpCategory.Unknown,
                 "filter" => CategorizeFilterEntry(parts),
                 _ => CategorizeByFileName(path)
             };
@@ -114,6 +135,7 @@ namespace WAD.NET.Archives
 
         private static LumpCategory CategorizeFilterEntry(string[] parts)
         {
+            // filter/game.id/category/file
             if (parts.Length < 3)
                 return LumpCategory.Unknown;
 
@@ -176,34 +198,78 @@ namespace WAD.NET.Archives
         /// <inheritdoc/>
         public byte[] ReadLump(LumpEntry entry)
         {
-            var fullPath = System.IO.Path.Combine(_basePath, entry.FullPath);
-            if (!File.Exists(fullPath))
-                throw new FileNotFoundException($"File not found: {entry.FullPath}", fullPath);
+            var sevenZipEntry = _archive.Entries.FirstOrDefault(e =>
+                e.Key.Equals(entry.FullPath, StringComparison.OrdinalIgnoreCase));
 
-            return File.ReadAllBytes(fullPath);
+            if (sevenZipEntry == null)
+                throw new InvalidOperationException($"Entry not found: {entry.FullPath}");
+
+            using var stream = sevenZipEntry.OpenEntryStream();
+            using var ms = new MemoryStream();
+            stream.CopyTo(ms);
+            return ms.ToArray();
         }
 
         /// <inheritdoc/>
         public Stream OpenLump(LumpEntry entry)
         {
-            var fullPath = System.IO.Path.Combine(_basePath, entry.FullPath);
-            if (!File.Exists(fullPath))
-                throw new FileNotFoundException($"File not found: {entry.FullPath}", fullPath);
+            var sevenZipEntry = _archive.Entries.FirstOrDefault(e =>
+                e.Key.Equals(entry.FullPath, StringComparison.OrdinalIgnoreCase));
 
-            return File.OpenRead(fullPath);
+            if (sevenZipEntry == null)
+                throw new InvalidOperationException($"Entry not found: {entry.FullPath}");
+
+            // Return a MemoryStream because SevenZipArchiveEntry streams don't support seeking
+            var ms = new MemoryStream();
+            using (var stream = sevenZipEntry.OpenEntryStream())
+            {
+                stream.CopyTo(ms);
+            }
+            ms.Position = 0;
+            return ms;
         }
 
         /// <inheritdoc/>
         public bool Contains(string name) => _entries.ContainsKey(name);
 
         /// <summary>
-        /// Get all embedded WAD files in the folder.
+        /// Get all embedded WAD files in the archive.
         /// </summary>
         public IEnumerable<string> GetEmbeddedWads()
         {
             return _entries.Values
                 .Where(e => e.FullPath.EndsWith(".wad", StringComparison.OrdinalIgnoreCase))
                 .Select(e => e.FullPath);
+        }
+
+        /// <summary>
+        /// Opens an embedded WAD file as a WadArchiveReader.
+        /// </summary>
+        /// <param name="wadPath">Full path to the WAD within the archive.</param>
+        /// <returns>A WadArchiveReader for the embedded WAD.</returns>
+        public WadArchiveReader OpenEmbeddedWad(string wadPath)
+        {
+            var entry = _entries.Values
+                .FirstOrDefault(e => e.FullPath.Equals(wadPath, StringComparison.OrdinalIgnoreCase));
+
+            if (entry == null)
+                throw new FileNotFoundException($"Embedded WAD not found: {wadPath}");
+
+            var sevenZipEntry = _archive.Entries.FirstOrDefault(e =>
+                e.Key.Equals(entry.FullPath, StringComparison.OrdinalIgnoreCase));
+
+            if (sevenZipEntry == null)
+                throw new InvalidOperationException($"Entry not found in archive: {entry.FullPath}");
+
+            // Read WAD into memory (WADs are typically small enough)
+            var ms = new MemoryStream();
+            using (var stream = sevenZipEntry.OpenEntryStream())
+            {
+                stream.CopyTo(ms);
+            }
+            ms.Position = 0;
+
+            return new WadArchiveReader(ms, leaveOpen: false, wadName: entry.Name);
         }
 
         /// <summary>
@@ -215,7 +281,7 @@ namespace WAD.NET.Archives
         }
 
         /// <summary>
-        /// Get entries in a specific subfolder.
+        /// Get entries by folder path.
         /// </summary>
         public IEnumerable<LumpEntry> GetEntriesInFolder(string folderPath)
         {
@@ -227,7 +293,11 @@ namespace WAD.NET.Archives
         /// <inheritdoc/>
         public void Dispose()
         {
-            // Nothing to dispose for folder reader
+            if (!_disposed)
+            {
+                _archive?.Dispose();
+                _disposed = true;
+            }
         }
     }
 }

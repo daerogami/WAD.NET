@@ -55,7 +55,7 @@ namespace WAD.NET.Archives
         /// <param name="stream">Stream containing WAD data.</param>
         /// <param name="leaveOpen">Whether to leave the stream open when disposed.</param>
         /// <param name="wadName">Optional name for the WAD.</param>
-        public WadArchiveReader(Stream stream, bool leaveOpen = false, string wadName = null)
+        public WadArchiveReader(Stream stream, bool leaveOpen = false, string? wadName = null)
         {
             _filePath = wadName ?? string.Empty;
             _leaveOpen = leaveOpen;

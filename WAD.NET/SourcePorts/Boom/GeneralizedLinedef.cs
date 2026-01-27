@@ -41,7 +41,7 @@ namespace WAD.NET.SourcePorts.Boom
         /// </summary>
         /// <param name="type">The linedef special type.</param>
         /// <returns>A GeneralizedAction describing the action, or null if not a generalized type.</returns>
-        public static GeneralizedAction Parse(ushort type)
+        public static GeneralizedAction? Parse(ushort type)
         {
             if (!IsGeneralized(type))
                 return null;

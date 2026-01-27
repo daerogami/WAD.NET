@@ -113,7 +113,7 @@ namespace WAD.NET.UDMF
         /// <summary>
         /// Comment (not used by engine).
         /// </summary>
-        public string Comment { get; set; }
+        public string? Comment { get; set; }
 
         /// <summary>
         /// Line is repeatable.

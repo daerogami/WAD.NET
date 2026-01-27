@@ -16,11 +16,11 @@ namespace WAD.NET.Resources
         private readonly IArchiveReader _reader;
         private readonly bool _ownsReader;
 
-        private Palette _defaultPalette;
-        private Palette[] _palettes;
-        private byte[][] _colorMaps;
-        private string[] _patchNames;
-        private TextureDefinition[] _textures;
+        private Palette? _defaultPalette;
+        private Palette[]? _palettes;
+        private byte[][]? _colorMaps;
+        private string[]? _patchNames;
+        private TextureDefinition[]? _textures;
         private readonly Dictionary<string, DoomPicture> _patchCache;
         private readonly Dictionary<string, DoomPicture> _spriteCache;
         private readonly Dictionary<string, FlatLump> _flatCache;
@@ -44,7 +44,7 @@ namespace WAD.NET.Resources
         /// <summary>
         /// Gets the default palette (palette 0).
         /// </summary>
-        public Palette DefaultPalette => _defaultPalette;
+        public Palette? DefaultPalette => _defaultPalette;
 
         /// <summary>
         /// Gets all palettes (14 in standard DOOM).
@@ -122,7 +122,7 @@ namespace WAD.NET.Resources
         /// Gets a specific palette by index.
         /// </summary>
         /// <param name="index">Palette index (0-13 for standard DOOM).</param>
-        public Palette GetPalette(int index)
+        public Palette? GetPalette(int index)
         {
             if (_palettes == null || index < 0 || index >= _palettes.Length)
                 return _defaultPalette;
@@ -134,7 +134,7 @@ namespace WAD.NET.Resources
         /// </summary>
         /// <param name="name">The sprite lump name (e.g., "POSSA1").</param>
         /// <returns>The parsed picture, or null if not found.</returns>
-        public DoomPicture GetSprite(string name)
+        public DoomPicture? GetSprite(string name)
         {
             if (string.IsNullOrEmpty(name))
                 return null;
@@ -164,7 +164,7 @@ namespace WAD.NET.Resources
         /// </summary>
         /// <param name="name">The patch name.</param>
         /// <returns>The parsed picture, or null if not found.</returns>
-        public DoomPicture GetPatch(string name)
+        public DoomPicture? GetPatch(string name)
         {
             if (string.IsNullOrEmpty(name))
                 return null;
@@ -192,7 +192,7 @@ namespace WAD.NET.Resources
         /// <summary>
         /// Gets a patch by index from PNAMES.
         /// </summary>
-        public DoomPicture GetPatch(int index)
+        public DoomPicture? GetPatch(int index)
         {
             if (_patchNames == null || index < 0 || index >= _patchNames.Length)
                 return null;
@@ -202,7 +202,7 @@ namespace WAD.NET.Resources
         /// <summary>
         /// Finds a texture definition by name.
         /// </summary>
-        public TextureDefinition FindTexture(string name)
+        public TextureDefinition? FindTexture(string name)
         {
             if (_textures == null || string.IsNullOrEmpty(name))
                 return null;
@@ -216,7 +216,7 @@ namespace WAD.NET.Resources
         /// </summary>
         /// <param name="name">The texture name.</param>
         /// <returns>Palette-indexed pixel data, or null if not found.</returns>
-        public byte[] BuildTexture(string name)
+        public byte[]? BuildTexture(string name)
         {
             var definition = FindTexture(name);
             if (definition == null)
@@ -228,7 +228,7 @@ namespace WAD.NET.Resources
         /// <summary>
         /// Builds a composite texture from a definition.
         /// </summary>
-        public byte[] BuildTexture(TextureDefinition definition)
+        public byte[]? BuildTexture(TextureDefinition? definition)
         {
             if (definition == null)
                 return null;
@@ -249,14 +249,14 @@ namespace WAD.NET.Resources
                 }
             }
 
-            var builder = new TextureBuilder(definition, _patchNames, patches, _defaultPalette);
+            var builder = new TextureBuilder(definition, _patchNames ?? System.Array.Empty<string>(), patches, _defaultPalette);
             return builder.BuildIndexed();
         }
 
         /// <summary>
         /// Builds a composite texture as RGBA data.
         /// </summary>
-        public byte[] BuildTextureRgba(string name)
+        public byte[]? BuildTextureRgba(string name)
         {
             var definition = FindTexture(name);
             if (definition == null || _defaultPalette == null)
@@ -278,7 +278,7 @@ namespace WAD.NET.Resources
                 }
             }
 
-            var builder = new TextureBuilder(definition, _patchNames, patches, _defaultPalette);
+            var builder = new TextureBuilder(definition, _patchNames ?? System.Array.Empty<string>(), patches, _defaultPalette);
             return builder.BuildRgba();
         }
 
@@ -286,7 +286,7 @@ namespace WAD.NET.Resources
         /// Gets a flat by name.
         /// </summary>
         /// <param name="name">The flat name (e.g., "FLOOR0_1").</param>
-        public FlatLump GetFlat(string name)
+        public FlatLump? GetFlat(string name)
         {
             if (string.IsNullOrEmpty(name))
                 return null;

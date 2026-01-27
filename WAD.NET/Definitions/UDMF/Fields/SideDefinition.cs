@@ -45,7 +45,7 @@ namespace WAD.NET.UDMF.Fields
         /// <summary>
         /// A comment.
         /// </summary>
-        public string Comment { get; set; }
+        public string? Comment { get; set; }
 
         /// <summary>
         /// X scale for upper texture. Default = 1.0.

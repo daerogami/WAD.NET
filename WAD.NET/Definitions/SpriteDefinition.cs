@@ -64,7 +64,7 @@ namespace WAD.NET.Definitions
         /// <param name="frame">Frame letter (A-Z).</param>
         /// <param name="rotation">Rotation angle index (1-8).</param>
         /// <returns>The sprite frame, or null if not found.</returns>
-        public SpriteFrame GetFrame(char frame, int rotation)
+        public SpriteFrame? GetFrame(char frame, int rotation)
         {
             if (!Frames.TryGetValue(frame, out var rotations))
                 return null;

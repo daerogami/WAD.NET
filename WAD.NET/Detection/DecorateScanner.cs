@@ -35,8 +35,8 @@ namespace WAD.NET.Detection
                 var actor = new ActorDefinition
                 {
                     Name = match.Groups[1].Value,
-                    Parent = match.Groups[2].Success ? match.Groups[2].Value : null,
-                    Replaces = match.Groups[3].Success ? match.Groups[3].Value : null,
+                    Parent = match.Groups[2].Success ? match.Groups[2].Value : string.Empty,
+                    Replaces = match.Groups[3].Success ? match.Groups[3].Value : string.Empty,
                     EditorNumber = match.Groups[4].Success
                         ? int.Parse(match.Groups[4].Value)
                         : (int?)null
@@ -47,7 +47,7 @@ namespace WAD.NET.Detection
                 int braceStart = content.IndexOf('{', blockStart);
                 if (braceStart != -1 && braceStart - blockStart < 100) // Within reasonable distance
                 {
-                    string block = ExtractBlock(content, braceStart);
+                    string? block = ExtractBlock(content, braceStart);
                     if (block != null)
                     {
                         ExtractActorProperties(block, actor);
@@ -67,7 +67,7 @@ namespace WAD.NET.Detection
             return info;
         }
 
-        private static string ExtractBlock(string content, int braceStart)
+        private static string? ExtractBlock(string content, int braceStart)
         {
             int depth = 0;
             int start = braceStart;
@@ -173,13 +173,13 @@ namespace WAD.NET.Detection
     public class ActorDefinition
     {
         /// <summary>Actor class name.</summary>
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>Parent class name.</summary>
-        public string Parent { get; set; }
+        public string Parent { get; set; } = string.Empty;
 
         /// <summary>Actor this replaces.</summary>
-        public string Replaces { get; set; }
+        public string Replaces { get; set; } = string.Empty;
 
         /// <summary>Editor number (DoomEdNum).</summary>
         public int? EditorNumber { get; set; }
@@ -206,6 +206,6 @@ namespace WAD.NET.Detection
         public bool IsProjectile { get; set; }
 
         /// <summary>State labels defined.</summary>
-        public string[] StateLabels { get; set; }
+        public string[] StateLabels { get; set; } = System.Array.Empty<string>();
     }
 }

@@ -54,7 +54,7 @@ namespace WAD.NET.Maps
         /// <param name="wad">The WAD to read from.</param>
         /// <param name="mapName">The map name (e.g., E1M1, MAP01).</param>
         /// <returns>The map, or null if not found.</returns>
-        public IMap ReadMap(Wad wad, string mapName)
+        public IMap? ReadMap(Wad wad, string mapName)
         {
             var lumps = wad.Lumps.ToArray();
 
@@ -119,7 +119,7 @@ namespace WAD.NET.Maps
             return mapLumps;
         }
 
-        private IMap CreateMap(string name, MapFormat format, Dictionary<string, ILump> lumps)
+        private IMap? CreateMap(string name, MapFormat format, Dictionary<string, ILump> lumps)
         {
             return format switch
             {
@@ -209,7 +209,7 @@ namespace WAD.NET.Maps
             };
         }
 
-        private T GetLump<T>(Dictionary<string, ILump> lumps, string name) where T : class
+        private T? GetLump<T>(Dictionary<string, ILump> lumps, string name) where T : class
         {
             if (lumps.TryGetValue(name, out var lump))
             {

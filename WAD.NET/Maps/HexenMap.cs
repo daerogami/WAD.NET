@@ -12,7 +12,7 @@ namespace WAD.NET.Maps
         /// <summary>
         /// The map name (e.g., MAP01).
         /// </summary>
-        public string Name { get; init; }
+        public string Name { get; init; } = string.Empty;
 
         /// <summary>
         /// The map format is always Hexen.
@@ -22,57 +22,57 @@ namespace WAD.NET.Maps
         /// <summary>
         /// Things (entities) in the map.
         /// </summary>
-        public HexenThing[] Things { get; init; }
+        public HexenThing[] Things { get; init; } = System.Array.Empty<HexenThing>();
 
         /// <summary>
         /// Vertices in the map.
         /// </summary>
-        public MapVertex[] Vertices { get; init; }
+        public MapVertex[] Vertices { get; init; } = System.Array.Empty<MapVertex>();
 
         /// <summary>
         /// Linedefs in the map.
         /// </summary>
-        public HexenLinedef[] Linedefs { get; init; }
+        public HexenLinedef[] Linedefs { get; init; } = System.Array.Empty<HexenLinedef>();
 
         /// <summary>
         /// Sidedefs in the map.
         /// </summary>
-        public DoomSidedef[] Sidedefs { get; init; }
+        public DoomSidedef[] Sidedefs { get; init; } = System.Array.Empty<DoomSidedef>();
 
         /// <summary>
         /// Sectors in the map.
         /// </summary>
-        public DoomSector[] Sectors { get; init; }
+        public DoomSector[] Sectors { get; init; } = System.Array.Empty<DoomSector>();
 
         /// <summary>
         /// BSP segs.
         /// </summary>
-        public Seg[] Segs { get; init; }
+        public Seg[] Segs { get; init; } = System.Array.Empty<Seg>();
 
         /// <summary>
         /// BSP subsectors.
         /// </summary>
-        public Subsector[] Subsectors { get; init; }
+        public Subsector[] Subsectors { get; init; } = System.Array.Empty<Subsector>();
 
         /// <summary>
         /// BSP nodes.
         /// </summary>
-        public Node[] Nodes { get; init; }
+        public Node[] Nodes { get; init; } = System.Array.Empty<Node>();
 
         /// <summary>
         /// Reject table data.
         /// </summary>
-        public byte[] RejectTable { get; init; }
+        public byte[] RejectTable { get; init; } = System.Array.Empty<byte>();
 
         /// <summary>
         /// Blockmap data.
         /// </summary>
-        public byte[] BlockmapData { get; init; }
+        public byte[] BlockmapData { get; init; } = System.Array.Empty<byte>();
 
         /// <summary>
         /// ACS bytecode from BEHAVIOR lump.
         /// </summary>
-        public byte[] BehaviorData { get; init; }
+        public byte[] BehaviorData { get; init; } = System.Array.Empty<byte>();
 
         /// <summary>
         /// Number of things.

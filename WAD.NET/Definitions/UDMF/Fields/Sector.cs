@@ -22,12 +22,12 @@ namespace WAD.NET.UDMF.Fields
         /// <summary>
         /// Floor flat. No valid default.
         /// </summary>
-        public string TextureFloor { get; set; }
+        public string? TextureFloor { get; set; }
 
         /// <summary>
         /// Ceiling flat. No valid default.
         /// </summary>
-        public string TextureCeiling { get; set; }
+        public string? TextureCeiling { get; set; }
 
         /// <summary>
         /// Light level. Default = 160.
@@ -47,7 +47,7 @@ namespace WAD.NET.UDMF.Fields
         /// <summary>
         /// A comment. Implementors should attach no special semantic meaning to this field.
         /// </summary>
-        public string Comment { get; set; }
+        public string? Comment { get; set; }
 
         public Sector()
         {

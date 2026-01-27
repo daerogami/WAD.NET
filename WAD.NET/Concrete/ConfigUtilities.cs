@@ -6,7 +6,7 @@ namespace WAD.NET.Concrete
 {
     public static class ConfigUtilities
     {
-        public static string ConvertZandronumJoinStringToConfigFile(string joinString, string configName)
+        public static string ConvertZandronumJoinStringToConfigFile(string joinString, string? configName)
         {
             var zandronumExecutablePath = GetExecutablePath(joinString);
             var iwad = GetIwad(joinString);

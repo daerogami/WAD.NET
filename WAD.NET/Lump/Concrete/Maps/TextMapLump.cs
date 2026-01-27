@@ -20,7 +20,7 @@ namespace WAD.NET.Concrete.Maps
         /// The parsed UDMF map (lazy loaded).
         /// </summary>
         public UdmfMap Map => _map ??= ParseMap();
-        private UdmfMap _map;
+        private UdmfMap? _map;
 
         /// <summary>
         /// Creates a new TextMapLump.

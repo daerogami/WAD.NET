@@ -544,6 +544,103 @@ namespace WAD.NET.Tests
             Assert.Equal(0, data[25]);   // A (transparent)
         }
 
+        [Fact]
+        public void ImageExporter_ExportPng_ShouldCreateValidPngHeader()
+        {
+            var pixels = new byte[4]; // 2x2
+            var picture = new DoomPicture(2, 2, 0, 0, pixels);
+
+            var paletteData = new byte[Palette.ByteSize];
+            var palette = new Palette(paletteData);
+
+            using var output = new MemoryStream();
+            ImageExporter.ExportPng(picture, palette, output);
+
+            output.Position = 0;
+            var pngData = output.ToArray();
+
+            // Check PNG signature (8 bytes)
+            Assert.Equal(0x89, pngData[0]);
+            Assert.Equal((byte)'P', pngData[1]);
+            Assert.Equal((byte)'N', pngData[2]);
+            Assert.Equal((byte)'G', pngData[3]);
+            Assert.Equal(0x0D, pngData[4]);
+            Assert.Equal(0x0A, pngData[5]);
+            Assert.Equal(0x1A, pngData[6]);
+            Assert.Equal(0x0A, pngData[7]);
+        }
+
+        [Fact]
+        public void ImageExporter_ExportPng_ShouldExportFlatLump()
+        {
+            var flatData = new byte[FlatLump.Size];
+            var flat = new FlatLump("FLOOR", "TEST.WAD", flatData);
+
+            var paletteData = new byte[Palette.ByteSize];
+            var palette = new Palette(paletteData);
+
+            using var output = new MemoryStream();
+            ImageExporter.ExportPng(flat, palette, output);
+
+            output.Position = 0;
+            var pngData = output.ToArray();
+
+            // Check PNG signature
+            Assert.Equal(0x89, pngData[0]);
+            Assert.Equal((byte)'P', pngData[1]);
+            Assert.Equal((byte)'N', pngData[2]);
+            Assert.Equal((byte)'G', pngData[3]);
+        }
+
+        [Fact]
+        public void ImageExporter_ExportPng_ShouldExportRawRgba()
+        {
+            var rgba = new byte[4 * 4]; // 2x2 with RGBA
+            rgba[0] = 255; rgba[1] = 0; rgba[2] = 0; rgba[3] = 255;   // Red
+            rgba[4] = 0; rgba[5] = 255; rgba[6] = 0; rgba[7] = 255;   // Green
+            rgba[8] = 0; rgba[9] = 0; rgba[10] = 255; rgba[11] = 255; // Blue
+            rgba[12] = 0; rgba[13] = 0; rgba[14] = 0; rgba[15] = 0;   // Transparent
+
+            using var output = new MemoryStream();
+            ImageExporter.ExportPng(2, 2, rgba, output);
+
+            output.Position = 0;
+            var pngData = output.ToArray();
+
+            // Check PNG signature
+            Assert.Equal(0x89, pngData[0]);
+            Assert.Equal((byte)'P', pngData[1]);
+            Assert.Equal((byte)'N', pngData[2]);
+            Assert.Equal((byte)'G', pngData[3]);
+
+            // PNG should be larger than header alone (compressed pixel data + chunks)
+            Assert.True(pngData.Length > 8);
+        }
+
+        [Fact]
+        public void ImageExporter_ExportPng_ShouldThrowOnInvalidRgbaLength()
+        {
+            var rgba = new byte[10]; // Invalid size for any dimension
+
+            using var output = new MemoryStream();
+            Assert.Throws<ArgumentException>(() => ImageExporter.ExportPng(2, 2, rgba, output));
+        }
+
+        [Fact]
+        public void ImageExporter_ExportPng_ShouldThrowOnNullArguments()
+        {
+            var paletteData = new byte[Palette.ByteSize];
+            var palette = new Palette(paletteData);
+            var pixels = new byte[4];
+            var picture = new DoomPicture(2, 2, 0, 0, pixels);
+
+            using var output = new MemoryStream();
+
+            Assert.Throws<ArgumentNullException>(() => ImageExporter.ExportPng((DoomPicture)null!, palette, output));
+            Assert.Throws<ArgumentNullException>(() => ImageExporter.ExportPng(picture, null!, output));
+            Assert.Throws<ArgumentNullException>(() => ImageExporter.ExportPng(picture, palette, (Stream)null!));
+        }
+
         #endregion
     }
 }

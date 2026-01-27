@@ -65,7 +65,7 @@ namespace WAD.NET.Parsers.Dehacked
         /// <summary>
         /// Miscellaneous game settings.
         /// </summary>
-        public DehMisc Misc { get; set; }
+        public DehMisc? Misc { get; set; }
 
         /// <summary>
         /// Par times for maps.
@@ -87,7 +87,7 @@ namespace WAD.NET.Parsers.Dehacked
         public int Index { get; set; }
 
         /// <summary>Optional name from DEH comment.</summary>
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         /// <summary>Hit points.</summary>
         public int? HitPoints { get; set; }
@@ -207,7 +207,7 @@ namespace WAD.NET.Parsers.Dehacked
         public int? Misc2 { get; set; }
 
         /// <summary>Args (MBF21) - 8 parameters.</summary>
-        public int[] Args { get; set; }
+        public int[]? Args { get; set; }
     }
 
     /// <summary>
@@ -219,7 +219,7 @@ namespace WAD.NET.Parsers.Dehacked
         public int Index { get; set; }
 
         /// <summary>Optional name from DEH comment.</summary>
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         /// <summary>Ammo type used.</summary>
         public int? AmmoType { get; set; }
@@ -309,10 +309,10 @@ namespace WAD.NET.Parsers.Dehacked
         public int NewLength { get; set; }
 
         /// <summary>Original text.</summary>
-        public string OldText { get; set; }
+        public string OldText { get; set; } = string.Empty;
 
         /// <summary>Replacement text.</summary>
-        public string NewText { get; set; }
+        public string NewText { get; set; } = string.Empty;
     }
 
     /// <summary>
@@ -321,10 +321,10 @@ namespace WAD.NET.Parsers.Dehacked
     public class DehString
     {
         /// <summary>String mnemonic (e.g., HUSTR_E1M1).</summary>
-        public string Mnemonic { get; set; }
+        public string Mnemonic { get; set; } = string.Empty;
 
         /// <summary>New string value.</summary>
-        public string Value { get; set; }
+        public string Value { get; set; } = string.Empty;
     }
 
     /// <summary>
@@ -336,7 +336,7 @@ namespace WAD.NET.Parsers.Dehacked
         public int FrameIndex { get; set; }
 
         /// <summary>Code pointer name (e.g., A_BFGSpray).</summary>
-        public string CodePointerName { get; set; }
+        public string CodePointerName { get; set; } = string.Empty;
     }
 
     /// <summary>
@@ -414,9 +414,9 @@ namespace WAD.NET.Parsers.Dehacked
     public class DehCheat
     {
         /// <summary>Cheat name.</summary>
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>New cheat sequence.</summary>
-        public string Sequence { get; set; }
+        public string Sequence { get; set; } = string.Empty;
     }
 }

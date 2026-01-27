@@ -176,7 +176,7 @@ namespace WAD.NET.Sprites
         /// <summary>
         /// Extracts the sprite name (first 4 characters) from a lump name.
         /// </summary>
-        public static string GetSpriteName(string lumpName)
+        public static string? GetSpriteName(string lumpName)
         {
             if (lumpName == null || lumpName.Length < 4)
                 return null;

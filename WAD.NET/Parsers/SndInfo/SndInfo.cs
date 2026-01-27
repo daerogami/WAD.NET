@@ -92,7 +92,7 @@ namespace WAD.NET.Parsers.SndInfo
         public int Id { get; set; }
 
         /// <summary>Environment name.</summary>
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
     }
 
     /// <summary>
@@ -104,7 +104,7 @@ namespace WAD.NET.Parsers.SndInfo
         public int Index { get; set; }
 
         /// <summary>Sound name to play.</summary>
-        public string SoundName { get; set; }
+        public string SoundName { get; set; } = string.Empty;
 
         /// <summary>Ambient type (point, surround, world).</summary>
         public AmbientType Type { get; set; }
@@ -148,16 +148,16 @@ namespace WAD.NET.Parsers.SndInfo
     public class PlayerSoundDefinition
     {
         /// <summary>Player class name.</summary>
-        public string PlayerClass { get; set; }
+        public string PlayerClass { get; set; } = string.Empty;
 
         /// <summary>Gender (male, female, other).</summary>
-        public string Gender { get; set; }
+        public string Gender { get; set; } = string.Empty;
 
         /// <summary>Sound slot name.</summary>
-        public string SlotName { get; set; }
+        public string SlotName { get; set; } = string.Empty;
 
         /// <summary>Sound to play.</summary>
-        public string SoundName { get; set; }
+        public string SoundName { get; set; } = string.Empty;
     }
 
     /// <summary>
@@ -166,15 +166,15 @@ namespace WAD.NET.Parsers.SndInfo
     public class PlayerCompatDefinition
     {
         /// <summary>Player class name.</summary>
-        public string PlayerClass { get; set; }
+        public string PlayerClass { get; set; } = string.Empty;
 
         /// <summary>Gender.</summary>
-        public string Gender { get; set; }
+        public string Gender { get; set; } = string.Empty;
 
         /// <summary>Compatible class.</summary>
-        public string CompatibleClass { get; set; }
+        public string CompatibleClass { get; set; } = string.Empty;
 
         /// <summary>Compatible gender.</summary>
-        public string CompatibleGender { get; set; }
+        public string CompatibleGender { get; set; } = string.Empty;
     }
 }

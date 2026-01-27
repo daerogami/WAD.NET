@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 using WAD.NET.Concrete;
 using WAD.NET.Definitions;
 
@@ -131,6 +133,75 @@ namespace WAD.NET.Export
         }
 
         /// <summary>
+        /// Exports a DoomPicture to a PNG file (with alpha support).
+        /// </summary>
+        /// <param name="picture">The picture to export.</param>
+        /// <param name="palette">The palette to use for color lookup.</param>
+        /// <param name="output">The output stream.</param>
+        public static void ExportPng(DoomPicture picture, Palette palette, Stream output)
+        {
+            if (picture == null) throw new ArgumentNullException(nameof(picture));
+            if (palette == null) throw new ArgumentNullException(nameof(palette));
+            if (output == null) throw new ArgumentNullException(nameof(output));
+
+            var rgba = picture.ToRgba(palette);
+            WritePng(output, picture.Width, picture.Height, rgba);
+        }
+
+        /// <summary>
+        /// Exports a FlatLump to a PNG file.
+        /// </summary>
+        public static void ExportPng(FlatLump flat, Palette palette, Stream output)
+        {
+            if (flat == null) throw new ArgumentNullException(nameof(flat));
+            if (palette == null) throw new ArgumentNullException(nameof(palette));
+            if (output == null) throw new ArgumentNullException(nameof(output));
+
+            var rgba = flat.ToRgba(palette);
+            WritePng(output, FlatLump.Width, FlatLump.Height, rgba);
+        }
+
+        /// <summary>
+        /// Exports raw RGBA data to a PNG file.
+        /// </summary>
+        public static void ExportPng(int width, int height, byte[] rgba, Stream output)
+        {
+            if (rgba == null) throw new ArgumentNullException(nameof(rgba));
+            if (output == null) throw new ArgumentNullException(nameof(output));
+            if (rgba.Length != width * height * 4)
+                throw new ArgumentException("RGBA array length must match width * height * 4");
+
+            WritePng(output, width, height, rgba);
+        }
+
+        /// <summary>
+        /// Exports a DoomPicture to a PNG file at the specified path.
+        /// </summary>
+        public static void ExportPng(DoomPicture picture, Palette palette, string filePath)
+        {
+            using var fs = File.Create(filePath);
+            ExportPng(picture, palette, fs);
+        }
+
+        /// <summary>
+        /// Exports a FlatLump to a PNG file at the specified path.
+        /// </summary>
+        public static void ExportPng(FlatLump flat, Palette palette, string filePath)
+        {
+            using var fs = File.Create(filePath);
+            ExportPng(flat, palette, fs);
+        }
+
+        /// <summary>
+        /// Exports raw RGBA data to a PNG file at the specified path.
+        /// </summary>
+        public static void ExportPng(int width, int height, byte[] rgba, string filePath)
+        {
+            using var fs = File.Create(filePath);
+            ExportPng(width, height, rgba, fs);
+        }
+
+        /// <summary>
         /// Writes TGA (Targa) format with 32-bit BGRA.
         /// </summary>
         private static void WriteTga(Stream output, int width, int height, byte[] rgba)
@@ -236,6 +307,15 @@ namespace WAD.NET.Export
                 if (rowPadding.Length > 0)
                     writer.Write(rowPadding);
             }
+        }
+
+        /// <summary>
+        /// Writes PNG format using ImageSharp with 32-bit RGBA.
+        /// </summary>
+        private static void WritePng(Stream output, int width, int height, byte[] rgba)
+        {
+            using var image = Image.LoadPixelData<Rgba32>(rgba, width, height);
+            image.SaveAsPng(output);
         }
     }
 }

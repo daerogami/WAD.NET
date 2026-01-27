@@ -85,7 +85,7 @@ namespace WAD.NET.Concrete
         /// Finds a texture by name.
         /// </summary>
         /// <returns>The texture definition, or null if not found.</returns>
-        public TextureDefinition Find(string name)
+        public TextureDefinition? Find(string name)
         {
             for (int i = 0; i < Textures.Length; i++)
             {

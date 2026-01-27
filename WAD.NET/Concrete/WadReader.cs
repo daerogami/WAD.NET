@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text;
 using WAD.NET.Abstract;
+using WAD.NET.Compression;
 using WAD.NET.Concrete.Maps;
 using WAD.NET.Enums;
 using WAD.NET.Interfaces;
@@ -22,7 +23,7 @@ namespace WAD.NET.Concrete
         private const int LumpNameSize = 8;
 
         private string _sourceWadName;
-        private BinaryReader _reader;
+        private BinaryReader _reader = null!;
         private long _fileSize;
         private bool _readingFlats;
         private bool _readingSprites;
@@ -41,7 +42,7 @@ namespace WAD.NET.Concrete
             _reader = new BinaryReader(stream);
         }
 
-        public WadReader(Stream input, Encoding encoding = null, bool leaveOpen = false, string wadName = null)
+        public WadReader(Stream input, Encoding? encoding = null, bool leaveOpen = false, string? wadName = null)
         {
             if (input == null)
                 throw new ArgumentNullException(nameof(input));
@@ -71,7 +72,7 @@ namespace WAD.NET.Concrete
 
             for (var i = 0; i < directoryCount; i++)
             {
-                var (offset, size, name) = ReadDirectoryEntry();
+                var (offset, size, name, isCompressed) = ReadDirectoryEntry();
 
                 if (size == 0)
                 {
@@ -79,7 +80,7 @@ namespace WAD.NET.Concrete
                 }
                 else
                 {
-                    var lump = ReadLump(offset, size, name);
+                    var lump = ReadLump(offset, size, name, isCompressed);
                     if (lump != null)
                     {
                         wad.Lumps.Enqueue(lump);
@@ -164,21 +165,22 @@ namespace WAD.NET.Concrete
             };
         }
 
-        private (int offset, int size, string name) ReadDirectoryEntry()
+        private (int offset, int size, string name, bool isCompressed) ReadDirectoryEntry()
         {
             var offset = _reader.ReadInt32();
             var size = _reader.ReadInt32();
             var nameBytes = _reader.ReadBytes(LumpNameSize);
 
-            // Check for LZSS compression marker
-            if (nameBytes[0] == 128)
+            // Check for LZSS compression marker (high bit set on first byte)
+            bool isCompressed = (nameBytes[0] & 0x80) != 0;
+            if (isCompressed)
             {
-                throw new NotSupportedException(
-                    "LZSS compressed lumps are not supported. See: https://doomwiki.org/wiki/WAD#Compression");
+                // Clear the compression marker bit to get the actual name
+                nameBytes[0] = (byte)(nameBytes[0] & 0x7F);
             }
 
             var name = ReadLumpName(nameBytes);
-            return (offset, size, name);
+            return (offset, size, name, isCompressed);
         }
 
         private static string ReadLumpName(byte[] nameBytes)
@@ -231,7 +233,7 @@ namespace WAD.NET.Concrete
             }
         }
 
-        private ILump ReadLump(int offset, int size, string name)
+        private ILump ReadLump(int offset, int size, string name, bool isCompressed = false)
         {
             ValidateLumpEntry(offset, size, name);
 
@@ -242,11 +244,38 @@ namespace WAD.NET.Concrete
                 _reader.BaseStream.Seek(offset, SeekOrigin.Begin);
                 var data = _reader.ReadBytes(size);
 
+                if (isCompressed)
+                {
+                    data = DecompressLzssData(data, name);
+                }
+
                 return CreateLump(name, data);
             }
             finally
             {
                 _reader.BaseStream.Seek(currentPosition, SeekOrigin.Begin);
+            }
+        }
+
+        /// <summary>
+        /// Decompresses LZSS-compressed lump data.
+        /// </summary>
+        /// <param name="compressedData">The compressed lump data with size header.</param>
+        /// <param name="lumpName">The name of the lump (for error messages).</param>
+        /// <returns>The decompressed data.</returns>
+        /// <exception cref="FormatException">Thrown when decompression fails.</exception>
+        private static byte[] DecompressLzssData(byte[] compressedData, string lumpName)
+        {
+            try
+            {
+                // Jaguar DOOM LZSS compressed lumps have a 4-byte header containing
+                // the uncompressed size, followed by the compressed data
+                return LzssDecompressor.DecompressWithHeader(compressedData);
+            }
+            catch (Exception ex) when (ex is FormatException || ex is ArgumentException)
+            {
+                throw new FormatException(
+                    $"Failed to decompress LZSS-compressed lump '{lumpName}': {ex.Message}", ex);
             }
         }
 
@@ -256,13 +285,13 @@ namespace WAD.NET.Concrete
             if (name == "F_START" || name == "F_END" || name == "FF_START" || name == "FF_END")
             {
                 _readingFlats = name.Contains("START");
-                return null;
+                return new BinaryLump(name, _sourceWadName, data);
             }
 
             if (name == "S_START" || name == "S_END" || name == "SS_START" || name == "SS_END")
             {
                 _readingSprites = name.Contains("START");
-                return null;
+                return new BinaryLump(name, _sourceWadName, data);
             }
 
             if (name == "P_START" || name == "P_END" || name == "PP_START" || name == "PP_END" ||
@@ -270,7 +299,7 @@ namespace WAD.NET.Concrete
                 name == "P3_START" || name == "P3_END")
             {
                 _readingPatches = name.Contains("START");
-                return null;
+                return new BinaryLump(name, _sourceWadName, data);
             }
 
             // Context-aware lump creation (flats between markers)
@@ -361,7 +390,7 @@ namespace WAD.NET.Concrete
         public void Dispose()
         {
             _reader?.Dispose();
-            _reader = null;
+            _reader = null!;
         }
     }
 }

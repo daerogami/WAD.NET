@@ -97,8 +97,8 @@ namespace WAD.NET.Tests
         public void ArchiveReaderFactory_ShouldDetect7zMagic()
         {
             using var ms = new MemoryStream();
-            // Write 7z magic bytes
-            ms.Write(new byte[] { 0x37, 0x7A, 0xBC, 0xAF }, 0, 4);
+            // Write full 7z magic bytes (6 bytes)
+            ms.Write(new byte[] { 0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C }, 0, 6);
             ms.Position = 0;
 
             var type = ArchiveReaderFactory.DetectArchiveType(ms);

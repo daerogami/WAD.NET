@@ -10,7 +10,7 @@ namespace WAD.NET.UDMF
     /// </summary>
     public class UdmfParser
     {
-        private Queue<UdmfToken> _tokens;
+        private Queue<UdmfToken> _tokens = new Queue<UdmfToken>();
         private UdmfToken _current;
 
         /// <summary>
@@ -198,8 +198,8 @@ namespace WAD.NET.UDMF
             if (props.TryGetValue("id", out var id)) sector.Id = ToInt(id);
             if (props.TryGetValue("heightfloor", out var hf)) sector.HeightFloor = ToInt(hf);
             if (props.TryGetValue("heightceiling", out var hc)) sector.HeightCeiling = ToInt(hc);
-            if (props.TryGetValue("texturefloor", out var tf)) sector.TextureFloor = tf?.ToString();
-            if (props.TryGetValue("textureceiling", out var tc)) sector.TextureCeiling = tc?.ToString();
+            if (props.TryGetValue("texturefloor", out var tf)) sector.TextureFloor = tf?.ToString() ?? string.Empty;
+            if (props.TryGetValue("textureceiling", out var tc)) sector.TextureCeiling = tc?.ToString() ?? string.Empty;
             if (props.TryGetValue("lightlevel", out var ll)) sector.LightLevel = ToInt(ll);
             if (props.TryGetValue("special", out var sp)) sector.Special = ToInt(sp);
             if (props.TryGetValue("comment", out var cm)) sector.Comment = cm?.ToString();

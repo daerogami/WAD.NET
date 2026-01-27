@@ -40,8 +40,8 @@ namespace WAD.NET.Detection
                 var classDef = new ZScriptClass
                 {
                     Name = match.Groups[1].Value,
-                    Parent = match.Groups[2].Success ? match.Groups[2].Value : null,
-                    Replaces = match.Groups[3].Success ? match.Groups[3].Value : null
+                    Parent = match.Groups[2].Success ? match.Groups[2].Value : string.Empty,
+                    Replaces = match.Groups[3].Success ? match.Groups[3].Value : string.Empty
                 };
 
                 // Try to extract class type from parent
@@ -72,7 +72,7 @@ namespace WAD.NET.Detection
                 int braceStart = content.IndexOf('{', blockStart);
                 if (braceStart != -1 && braceStart - blockStart < 100)
                 {
-                    string block = ExtractBlock(content, braceStart);
+                    string? block = ExtractBlock(content, braceStart);
                     if (block != null)
                     {
                         if (Regex.IsMatch(block, @"\bDefault\s*\{", RegexOptions.IgnoreCase))
@@ -118,7 +118,7 @@ namespace WAD.NET.Detection
             return info;
         }
 
-        private static string ExtractBlock(string content, int braceStart)
+        private static string? ExtractBlock(string content, int braceStart)
         {
             int depth = 0;
             int start = braceStart;
@@ -174,7 +174,7 @@ namespace WAD.NET.Detection
         /// <summary>
         /// ZScript version requirement.
         /// </summary>
-        public string Version { get; set; }
+        public string Version { get; set; } = string.Empty;
 
         /// <summary>
         /// Class definitions found.
@@ -220,13 +220,13 @@ namespace WAD.NET.Detection
     public class ZScriptClass
     {
         /// <summary>Class name.</summary>
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>Parent class name.</summary>
-        public string Parent { get; set; }
+        public string Parent { get; set; } = string.Empty;
 
         /// <summary>Class this replaces.</summary>
-        public string Replaces { get; set; }
+        public string Replaces { get; set; } = string.Empty;
 
         /// <summary>Whether this class derives from Actor.</summary>
         public bool IsActor { get; set; }
@@ -241,6 +241,6 @@ namespace WAD.NET.Detection
         public bool IsMenu { get; set; }
 
         /// <summary>Method names found in the class.</summary>
-        public string[] Methods { get; set; }
+        public string[] Methods { get; set; } = System.Array.Empty<string>();
     }
 }

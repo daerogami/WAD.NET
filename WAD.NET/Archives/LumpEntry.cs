@@ -10,12 +10,12 @@ namespace WAD.NET.Archives
         /// <summary>
         /// Lump name (8-char max for WAD, truncated filename for PK3).
         /// </summary>
-        public string Name { get; init; }
+        public string Name { get; init; } = string.Empty;
 
         /// <summary>
         /// Full path within archive (for PK3/folder), same as Name for WAD.
         /// </summary>
-        public string FullPath { get; init; }
+        public string FullPath { get; init; } = string.Empty;
 
         /// <summary>
         /// Compressed size in bytes.
