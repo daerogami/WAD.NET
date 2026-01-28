@@ -1,11 +1,13 @@
 using Xunit;
-using WAD.NET.Concrete;
+using WAD.NET.SourcePorts.Zandronum;
 using System;
 
 namespace WAD.NET.Tests
 {
     public class ConfigUtilitiesTests
     {
+        private readonly ZandronumConfigSerializer _serializer = new ZandronumConfigSerializer();
+
         #region Basic Conversion Tests
 
         [Fact]
@@ -14,7 +16,7 @@ namespace WAD.NET.Tests
             var joinString =
                 @"D:/Games/Zandronum/zandronum.exe -connect 149.56.242.162:10702 -iwad D:/Games/Zandronum/PWADS/doom2.wad -file D:/Games/Zandronum/PWADS/odaddon_2019105.pk7 -file D:/Games/Zandronum/PWADS/complex-doom.v26a2.pk3 -file D:/Games/Zandronum/PWADS/complex-doom.v26a2-nopush-v6.pk3 -file D:/Games/Zandronum/PWADS/lca-v1.5.9.6.pk3 -file D:/Games/Zandronum/PWADS/lca-v1.5.9-nopush-v2.pk3 -file D:/Games/Zandronum/PWADS/randommons-v1.2.4-server.only.pk3 -file D:/Games/Zandronum/PWADS/complex-dust-v1.7.pk3 -file D:/Games/Zandronum/PWADS/lca-djb-v4.4.3.pk3 -file D:/Games/Zandronum/PWADS/complex-lca-djb-dust-rm-support-v6.pk3 -file D:/Games/Zandronum/PWADS/complex-doom-justammo.v4.wad -file D:/Games/Zandronum/PWADS/hpbar-v16.pk3 -file D:/Games/Zandronum/PWADS/complex-morphitemfixes-lcarm-v1.pk3 -file D:/Games/Zandronum/PWADS/complex-menus-v2.pk3 -file D:/Games/Zandronum/PWADS/connectsound.wad -file D:/Games/Zandronum/PWADS/newtextcolours_260.pk3 -file D:/Games/Zandronum/PWADS/evecdsp-v3d.wad";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, null);
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, null);
 
             Assert.False(string.IsNullOrWhiteSpace(result));
             Assert.Contains("[%General]", result);
@@ -26,7 +28,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/Zandronum/zandronum.exe -iwad C:/IWADS/doom2.wad -file C:/PWADS/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "TestConfig");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "TestConfig");
 
             Assert.Contains("[%General]", result);
             Assert.Contains("[Rules]", result);
@@ -44,7 +46,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/Zandronum/zandronum.exe -iwad C:/IWADS/doom2.wad -file C:/PWADS/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, null);
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, null);
 
             Assert.Contains("name=NewConfig_", result);
         }
@@ -54,7 +56,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/Zandronum/zandronum.exe -iwad C:/IWADS/doom2.wad -file C:/PWADS/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "");
 
             Assert.Contains("name=NewConfig_", result);
         }
@@ -64,7 +66,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/Zandronum/zandronum.exe -iwad C:/IWADS/doom2.wad -file C:/PWADS/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "   ");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "   ");
 
             Assert.Contains("name=NewConfig_", result);
         }
@@ -74,7 +76,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/Zandronum/zandronum.exe -iwad C:/IWADS/doom2.wad -file C:/PWADS/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "MyCustomConfig");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "MyCustomConfig");
 
             Assert.Contains("name=MyCustomConfig", result);
         }
@@ -89,7 +91,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/Zandronum/zandronum.exe -iwad C:/IWADS/doom2.wad -file C:/PWADS/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, configName);
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, configName);
 
             Assert.Contains($"name={configName}", result);
         }
@@ -103,7 +105,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/Games/Zandronum/zandronum.exe -iwad C:/doom2.wad -file C:/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("executable=C:/Games/Zandronum/zandronum.exe ", result);
         }
@@ -113,7 +115,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"D:/Games/Zandronum/zandronum.exe -iwad D:/doom2.wad -file D:/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("executable=D:/Games/Zandronum/zandronum.exe ", result);
         }
@@ -124,7 +126,7 @@ namespace WAD.NET.Tests
             // No space after the string means regex won't match
             var joinString = @"-iwad C:/doom2.wad -file C:/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("executable=", result);
         }
@@ -138,7 +140,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/zandronum.exe -iwad C:/Games/IWADS/doom2.wad -file C:/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("iwad=C:/Games/IWADS/doom2.wad", result);
         }
@@ -148,7 +150,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/zandronum.exe -iwad C:/IWADS/heretic.wad -file C:/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("iwad=C:/IWADS/heretic.wad", result);
         }
@@ -158,7 +160,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/zandronum.exe -file C:/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             // The output contains "iwad=" followed by a newline (with possible whitespace)
             // Check that iwad= appears and is followed by pwads (indicating empty iwad)
@@ -178,7 +180,7 @@ namespace WAD.NET.Tests
         {
             var joinString = $@"C:/zandronum.exe -iwad C:/IWADS/{iwadName} -file C:/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains($"iwad=C:/IWADS/{iwadName}", result);
         }
@@ -192,7 +194,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/zandronum.exe -iwad C:/doom2.wad -file C:/PWADS/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("C:/PWADS/mod.pk3", result);
         }
@@ -202,7 +204,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/zandronum.exe -iwad C:/doom2.wad -file C:/mod1.pk3 -file C:/mod2.pk3 -file C:/mod3.wad ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("C:/mod1.pk3", result);
             Assert.Contains("C:/mod2.pk3", result);
@@ -214,7 +216,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/zandronum.exe -iwad C:/doom2.wad -file C:/mod1.pk3 -file C:/mod2.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("pwads=\"C:/mod1.pk3;C:/mod2.pk3\"", result);
         }
@@ -228,7 +230,7 @@ namespace WAD.NET.Tests
         {
             var joinString = $@"C:/zandronum.exe -iwad C:/doom2.wad -file C:/PWADS/mymod{extension} ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains($"C:/PWADS/mymod{extension}", result);
         }
@@ -245,22 +247,22 @@ namespace WAD.NET.Tests
             var joinString = @"C:/zandronum.exe -iwad C:/doom2.wad ";
 
             Assert.Throws<ArgumentOutOfRangeException>(() =>
-                ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test"));
+                _serializer.ConvertJoinStringToConfigFile(joinString, "Test"));
         }
 
         [Fact]
         public void ConvertZandronumJoinStringToConfigFile_WithEmptyJoinString_ThrowsException()
         {
-            // Empty string will have no -file matches, causing IndexOutOfRangeException
+            // Empty string will have no -file matches, causing ArgumentOutOfRangeException
             Assert.Throws<ArgumentOutOfRangeException>(() =>
-                ConfigUtilities.ConvertZandronumJoinStringToConfigFile("", "Test"));
+                _serializer.ConvertJoinStringToConfigFile("", "Test"));
         }
 
         [Fact]
         public void ConvertZandronumJoinStringToConfigFile_WithOnlyWhitespaceJoinString_ThrowsException()
         {
             Assert.Throws<ArgumentOutOfRangeException>(() =>
-                ConfigUtilities.ConvertZandronumJoinStringToConfigFile("   ", "Test"));
+                _serializer.ConvertJoinStringToConfigFile("   ", "Test"));
         }
 
         #endregion
@@ -272,7 +274,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/zandronum.exe -iwad C:/doom2.wad -file C:/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("engine=Zandronum", result);
         }
@@ -282,7 +284,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/zandronum.exe -iwad C:/doom2.wad -file C:/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("port=10666", result);
         }
@@ -292,7 +294,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/zandronum.exe -iwad C:/doom2.wad -file C:/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("difficulty=3", result);
         }
@@ -302,7 +304,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/zandronum.exe -iwad C:/doom2.wad -file C:/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             // Check for some specific dmflag settings
             Assert.Contains("DropWeaponOnDeath=1", result);
@@ -316,7 +318,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/zandronum.exe -iwad C:/doom2.wad -file C:/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("KickVote=1", result);
             Assert.Contains("ChangeMapVote=1", result);
@@ -328,7 +330,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/zandronum.exe -iwad C:/doom2.wad -file C:/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("CompatActorsAreInfinitelyTall=0", result);
             Assert.Contains("CompatUseOriginalMissileClippingHeight=0", result);
@@ -340,7 +342,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/zandronum.exe -iwad C:/doom2.wad -file C:/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("LMSChainsaw=0", result);
             Assert.Contains("LMSPistol=0", result);
@@ -358,7 +360,7 @@ namespace WAD.NET.Tests
             var joinString =
                 @"D:/Games/Zandronum 3.0/zandronum.exe -connect 192.168.1.1:10666 -iwad D:/Games/Doom/IWADS/doom2.wad -file D:/Games/Doom/PWADS/complex-doom.v26a2.pk3 -file D:/Games/Doom/PWADS/lca-v1.5.9.6.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "ComplexConfig");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "ComplexConfig");
 
             Assert.Contains("name=ComplexConfig", result);
             Assert.Contains("iwad=D:/Games/Doom/IWADS/doom2.wad", result);
@@ -371,8 +373,8 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/zandronum.exe -iwad C:/doom2.wad -file C:/mod.pk3 ";
 
-            var result1 = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, null);
-            var result2 = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, null);
+            var result1 = _serializer.ConvertJoinStringToConfigFile(joinString, null);
+            var result2 = _serializer.ConvertJoinStringToConfigFile(joinString, null);
 
             // Extract config names from both results
             var nameStart = result1.IndexOf("name=") + 5;
@@ -402,7 +404,7 @@ namespace WAD.NET.Tests
                 joinString += $"-file C:/PWADS/{file} ";
             }
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "ManyModsConfig");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "ManyModsConfig");
 
             foreach (var file in files)
             {
@@ -419,7 +421,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/Games_Folder/zandronum.exe -iwad C:/IWADs_Here/doom2.wad -file C:/PWADs_Here/my_mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("iwad=C:/IWADs_Here/doom2.wad", result);
             Assert.Contains("my_mod.pk3", result);
@@ -430,7 +432,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/zandronum.exe -iwad C:/doom2.wad -file C:/complex-doom-v1-2-3.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("complex-doom-v1-2-3.pk3", result);
         }
@@ -440,7 +442,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/Games.v2/zandronum.exe -iwad C:/doom2.wad -file C:/mod.v1.2.3.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("mod.v1.2.3.pk3", result);
         }
@@ -450,7 +452,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/Zandronum3/zandronum.exe -iwad C:/doom2.wad -file C:/mod123.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.Contains("mod123.pk3", result);
         }
@@ -464,7 +466,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/zandronum.exe -connect 192.168.1.100:10666 -iwad C:/doom2.wad -file C:/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             // Should still parse without error, connect is just part of the command
             Assert.NotNull(result);
@@ -476,7 +478,7 @@ namespace WAD.NET.Tests
         {
             var joinString = @"C:/zandronum.exe -connect 149.56.242.162:10702 -iwad C:/doom2.wad -file C:/mod.pk3 ";
 
-            var result = ConfigUtilities.ConvertZandronumJoinStringToConfigFile(joinString, "Test");
+            var result = _serializer.ConvertJoinStringToConfigFile(joinString, "Test");
 
             Assert.NotNull(result);
         }
