@@ -2,7 +2,7 @@
 
 namespace WAD.NET
 {
-    public class Class1
+    internal class SPACFlagAttribute : Attribute
     {
     }
 }
