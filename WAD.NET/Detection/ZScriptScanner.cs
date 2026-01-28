@@ -78,6 +78,19 @@ namespace WAD.NET.Detection
                         if (Regex.IsMatch(block, @"\bDefault\s*\{", RegexOptions.IgnoreCase))
                             classDef.IsActor = true;
 
+                        // Extract states
+                        var statesMatch = Regex.Match(block, @"\bStates\s*\{([\s\S]*?)\}", RegexOptions.IgnoreCase);
+                        if (statesMatch.Success)
+                        {
+                            var statesBody = statesMatch.Groups[1].Value;
+                            var stateLabels = Regex.Matches(statesBody, @"^\s*(\w+):", RegexOptions.Multiline);
+                            var labels = new List<string>();
+                            foreach (Match labelMatch in stateLabels)
+                                labels.Add(labelMatch.Groups[1].Value);
+                            classDef.StateLabels = labels.ToArray();
+                            classDef.ReferencedSprites = StatesSpriteExtractor.ExtractSpritePrefixes(statesBody);
+                        }
+
                         // Extract methods
                         var methodPattern = new Regex(@"\b(action|override|virtual|static|clearscope|ui|play)?\s*\w+\s+(\w+)\s*\(", RegexOptions.IgnoreCase);
                         var methods = new List<string>();
@@ -242,5 +255,11 @@ namespace WAD.NET.Detection
 
         /// <summary>Method names found in the class.</summary>
         public string[] Methods { get; set; } = System.Array.Empty<string>();
+
+        /// <summary>State labels defined.</summary>
+        public string[] StateLabels { get; set; } = System.Array.Empty<string>();
+
+        /// <summary>4-character sprite prefixes referenced in States blocks.</summary>
+        public HashSet<string> ReferencedSprites { get; set; } = new HashSet<string>();
     }
 }
