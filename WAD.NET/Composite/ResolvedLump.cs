@@ -32,5 +32,10 @@ namespace WAD.NET.Composite
         /// Null for Base and Added lumps.
         /// </summary>
         public LumpEntry? OverriddenLump { get; init; }
+
+        /// <summary>
+        /// Reference to the source archive reader for content access.
+        /// </summary>
+        internal IArchiveReader SourceReader { get; init; } = null!;
     }
 }

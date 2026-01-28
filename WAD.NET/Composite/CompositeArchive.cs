@@ -12,7 +12,7 @@ namespace WAD.NET.Composite
     /// Loads multiple archives in a specified order and resolves the effective lump set,
     /// implementing DOOM's resource layering model where later archives override earlier ones.
     /// </summary>
-    public class CompositeArchive
+    public class CompositeArchive : IDisposable
     {
         /// <summary>
         /// The ordered list of archive paths in the load order.
@@ -40,16 +40,28 @@ namespace WAD.NET.Composite
         // All resolved lumps, for source filtering.
         private readonly List<ResolvedLump> _allResolved;
 
+        // Retained archive readers for content access.
+        private readonly List<IArchiveReader> _readers;
+
+        // Whether this composite owns (and should dispose) the readers.
+        private readonly bool _ownsReaders;
+
+        private bool _disposed;
+
         private CompositeArchive(
             IReadOnlyList<string> loadOrder,
             Dictionary<string, ResolvedLump> effectiveLumps,
             Dictionary<string, List<LumpEntry>> overrideChains,
-            List<ResolvedLump> allResolved)
+            List<ResolvedLump> allResolved,
+            List<IArchiveReader> readers,
+            bool ownsReaders)
         {
             LoadOrder = loadOrder;
             EffectiveLumps = effectiveLumps;
             _overrideChains = overrideChains;
             _allResolved = allResolved;
+            _readers = readers;
+            _ownsReaders = ownsReaders;
 
             Overrides = allResolved.Where(r => r.Resolution == LumpResolutionType.Override).ToList();
             Additions = allResolved.Where(r => r.Resolution == LumpResolutionType.Added).ToList();
@@ -59,6 +71,7 @@ namespace WAD.NET.Composite
         /// Loads multiple archives in order and resolves the effective lump set.
         /// The first archive is treated as the base (typically an IWAD).
         /// Subsequent archives override or extend it.
+        /// The created CompositeArchive owns the readers and will dispose them on Dispose().
         /// </summary>
         /// <param name="archivePaths">Paths to archive files or folders, in load order.</param>
         /// <returns>A <see cref="CompositeArchive"/> with the resolved lump set.</returns>
@@ -67,28 +80,31 @@ namespace WAD.NET.Composite
             if (archivePaths == null || archivePaths.Length == 0)
                 throw new ArgumentException("At least one archive path is required.", nameof(archivePaths));
 
-            var readers = new IArchiveReader[archivePaths.Length];
+            var readers = new List<IArchiveReader>(archivePaths.Length);
             try
             {
                 for (int i = 0; i < archivePaths.Length; i++)
                 {
-                    readers[i] = ArchiveReaderFactory.Open(archivePaths[i]);
+                    readers.Add(ArchiveReaderFactory.Open(archivePaths[i]));
                 }
 
-                return Load(readers);
+                return BuildComposite(readers, ownsReaders: true);
             }
-            finally
+            catch
             {
+                // If building fails, dispose any readers we created.
                 foreach (var reader in readers)
                 {
                     reader?.Dispose();
                 }
+                throw;
             }
         }
 
         /// <summary>
         /// Loads multiple archives using pre-constructed readers and resolves the effective lump set.
         /// The first reader is treated as the base (typically an IWAD).
+        /// The created CompositeArchive does NOT own the readers and will not dispose them.
         /// </summary>
         /// <param name="readers">Archive readers in load order.</param>
         /// <returns>A <see cref="CompositeArchive"/> with the resolved lump set.</returns>
@@ -97,16 +113,20 @@ namespace WAD.NET.Composite
             if (readers == null || readers.Length == 0)
                 throw new ArgumentException("At least one reader is required.", nameof(readers));
 
+            return BuildComposite(new List<IArchiveReader>(readers), ownsReaders: false);
+        }
+
+        private static CompositeArchive BuildComposite(List<IArchiveReader> readers, bool ownsReaders)
+        {
             var loadOrder = readers.Select(r => r.Path).ToList();
             var effectiveLumps = new Dictionary<string, ResolvedLump>(StringComparer.OrdinalIgnoreCase);
             var overrideChains = new Dictionary<string, List<LumpEntry>>(StringComparer.OrdinalIgnoreCase);
             var allResolved = new List<ResolvedLump>();
 
             // Track which lump names exist in marker-bounded sections across all archives.
-            // Marker sections merge additively, but individual names within them override.
             var markerSectionNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            for (int sourceIndex = 0; sourceIndex < readers.Length; sourceIndex++)
+            for (int sourceIndex = 0; sourceIndex < readers.Count; sourceIndex++)
             {
                 var reader = readers[sourceIndex];
                 var entries = reader.GetEntries().ToList();
@@ -134,40 +154,31 @@ namespace WAD.NET.Composite
                     string mapName = kvp.Key;
                     var groupIndices = kvp.Value;
 
-                    // If a later archive provides a map marker, replace the entire group.
-                    // First, remove all existing sub-lumps from the base map group if overriding.
                     if (!isBase && effectiveLumps.ContainsKey(mapName))
                     {
-                        // Find and remove old map sub-lumps from effective set.
                         var oldSubLumpNames = MapSubLumpNames;
                         foreach (var subName in oldSubLumpNames)
                         {
-                            // Only remove if the existing lump came from the same map group context.
-                            // We construct compound keys: we actually just use the sub-lump name directly
-                            // since map sub-lumps like THINGS, LINEDEFS are shared names.
-                            // In WAD format, sub-lumps follow the map marker, so they are unique per position.
-                            // For effective resolution we key by name, so the override naturally replaces.
                         }
                     }
 
-                    // Add all entries in the map group.
                     foreach (int entryIndex in groupIndices)
                     {
                         var entry = entries[entryIndex];
                         AddOrOverride(effectiveLumps, overrideChains, allResolved,
-                            entry, sourceIndex, reader.Path, isBase);
+                            entry, sourceIndex, reader.Path, isBase, reader);
                     }
                 }
 
-                // Process marker-bounded section entries (merge additively, name-level override).
+                // Process marker-bounded section entries.
                 foreach (int entryIndex in sectionEntries)
                 {
                     if (mapGroupEntries.Contains(entryIndex))
-                        continue; // Already handled as part of a map group.
+                        continue;
 
                     var entry = entries[entryIndex];
                     AddOrOverride(effectiveLumps, overrideChains, allResolved,
-                        entry, sourceIndex, reader.Path, isBase);
+                        entry, sourceIndex, reader.Path, isBase, reader);
                 }
 
                 // Process remaining entries.
@@ -178,11 +189,45 @@ namespace WAD.NET.Composite
 
                     var entry = entries[i];
                     AddOrOverride(effectiveLumps, overrideChains, allResolved,
-                        entry, sourceIndex, reader.Path, isBase);
+                        entry, sourceIndex, reader.Path, isBase, reader);
                 }
             }
 
-            return new CompositeArchive(loadOrder, effectiveLumps, overrideChains, allResolved);
+            return new CompositeArchive(loadOrder, effectiveLumps, overrideChains, allResolved, readers, ownsReaders);
+        }
+
+        /// <summary>
+        /// Reads the content of a resolved lump from its source archive.
+        /// </summary>
+        /// <param name="lumpName">The lump name to read (case-insensitive).</param>
+        /// <returns>The lump data as a byte array.</returns>
+        /// <exception cref="ObjectDisposedException">Thrown if this composite has been disposed.</exception>
+        /// <exception cref="KeyNotFoundException">Thrown if the lump name is not in the effective set.</exception>
+        public byte[] ReadLump(string lumpName)
+        {
+            ThrowIfDisposed();
+
+            if (!EffectiveLumps.TryGetValue(lumpName, out var resolved))
+                throw new KeyNotFoundException($"Lump '{lumpName}' not found in the effective lump set.");
+
+            return resolved.SourceReader.ReadLump(resolved.Lump);
+        }
+
+        /// <summary>
+        /// Opens a stream to the content of a resolved lump from its source archive.
+        /// </summary>
+        /// <param name="lumpName">The lump name to read (case-insensitive).</param>
+        /// <returns>A stream containing the lump data.</returns>
+        /// <exception cref="ObjectDisposedException">Thrown if this composite has been disposed.</exception>
+        /// <exception cref="KeyNotFoundException">Thrown if the lump name is not in the effective set.</exception>
+        public Stream OpenLump(string lumpName)
+        {
+            ThrowIfDisposed();
+
+            if (!EffectiveLumps.TryGetValue(lumpName, out var resolved))
+                throw new KeyNotFoundException($"Lump '{lumpName}' not found in the effective lump set.");
+
+            return resolved.SourceReader.OpenLump(resolved.Lump);
         }
 
         /// <summary>
@@ -241,19 +286,43 @@ namespace WAD.NET.Composite
             };
         }
 
+        /// <summary>
+        /// Disposes of the composite archive. If the composite owns the readers
+        /// (created via Load(string[])), they are disposed. Externally-provided
+        /// readers (via Load(IArchiveReader[])) are not disposed.
+        /// </summary>
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+
+            if (_ownsReaders)
+            {
+                foreach (var reader in _readers)
+                {
+                    reader?.Dispose();
+                }
+            }
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(CompositeArchive));
+        }
+
         private List<LumpConflict> DetectConflicts()
         {
             var conflicts = new List<LumpConflict>();
 
-            // Group override chain entries by lump name, filtering to non-base sources (sourceIndex > 0).
             foreach (var kvp in _overrideChains)
             {
                 var chain = kvp.Value;
                 if (chain.Count < 2)
                     continue;
 
-                // Find all distinct non-base source indices that contributed this lump.
-                // We need source info, which is tracked in _allResolved.
                 var nonBaseSources = _allResolved
                     .Where(r => string.Equals(r.Lump.Name, kvp.Key, StringComparison.OrdinalIgnoreCase)
                                 && r.SourceIndex > 0)
@@ -309,13 +378,19 @@ namespace WAD.NET.Composite
 
             public byte[] ReadLump(LumpEntry entry)
             {
-                // We cannot read raw lump data without the original reader.
-                // Return empty data; the analyzer mostly checks for lump presence.
+                // Delegate to the resolved lump's source reader for real content.
+                if (_composite.EffectiveLumps.TryGetValue(entry.Name, out var resolved))
+                    return resolved.SourceReader.ReadLump(resolved.Lump);
+
                 return Array.Empty<byte>();
             }
 
             public Stream OpenLump(LumpEntry entry)
             {
+                // Delegate to the resolved lump's source reader for real content.
+                if (_composite.EffectiveLumps.TryGetValue(entry.Name, out var resolved))
+                    return resolved.SourceReader.OpenLump(resolved.Lump);
+
                 return new MemoryStream(Array.Empty<byte>(), writable: false);
             }
 
@@ -469,7 +544,8 @@ namespace WAD.NET.Composite
             LumpEntry entry,
             int sourceIndex,
             string sourcePath,
-            bool isBase)
+            bool isBase,
+            IArchiveReader sourceReader)
         {
             string key = entry.Name;
 
@@ -504,7 +580,8 @@ namespace WAD.NET.Composite
                 Resolution = resolution,
                 SourceIndex = sourceIndex,
                 SourcePath = sourcePath,
-                OverriddenLump = overriddenLump
+                OverriddenLump = overriddenLump,
+                SourceReader = sourceReader
             };
 
             effectiveLumps[key] = resolved;

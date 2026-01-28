@@ -126,11 +126,14 @@ namespace WAD.NET.Detection
             var statesMatch = Regex.Match(block, @"states\s*\{([\s\S]*?)\}", RegexOptions.IgnoreCase);
             if (statesMatch.Success)
             {
-                var stateLabels = Regex.Matches(statesMatch.Groups[1].Value, @"^\s*(\w+):", RegexOptions.Multiline);
+                var statesBody = statesMatch.Groups[1].Value;
+                var stateLabels = Regex.Matches(statesBody, @"^\s*(\w+):", RegexOptions.Multiline);
                 var labels = new List<string>();
                 foreach (Match labelMatch in stateLabels)
                     labels.Add(labelMatch.Groups[1].Value);
                 actor.StateLabels = labels.ToArray();
+
+                actor.ReferencedSprites = StatesSpriteExtractor.ExtractSpritePrefixes(statesBody);
             }
         }
 
@@ -207,5 +210,8 @@ namespace WAD.NET.Detection
 
         /// <summary>State labels defined.</summary>
         public string[] StateLabels { get; set; } = System.Array.Empty<string>();
+
+        /// <summary>4-character sprite prefixes referenced in States blocks.</summary>
+        public HashSet<string> ReferencedSprites { get; set; } = new HashSet<string>();
     }
 }
