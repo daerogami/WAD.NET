@@ -165,7 +165,7 @@ namespace WAD.NET.Tests
             // The output contains "iwad=" followed by a newline (with possible whitespace)
             // Check that iwad= appears and is followed by pwads (indicating empty iwad)
             Assert.Contains("iwad=", result);
-            Assert.Contains("iwad=\r\npwads", result);
+            Assert.Contains("iwad=\npwads", result.Replace("\r", ""));
         }
 
         [Theory]
