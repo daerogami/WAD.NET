@@ -4,15 +4,42 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>10.0</LangVersion>
     <Nullable>enable</Nullable>
+
+    <!-- Package Metadata -->
+    <PackageId>WAD.NET</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>daerogami</Authors>
+    <Description>A .NET Standard library for reading and analyzing DOOM WAD files, PK3 archives, and related formats</Description>
+    <PackageTags>doom;wad;idtech;modding;games;heretic;hexen;pk3</PackageTags>
+    <PackageProjectUrl>https://github.com/daerogami/WAD.NET</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/daerogami/WAD.NET</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+
+    <!-- Package Settings -->
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!-- Source Link for debugging -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
     <PackageReference Include="SharpCompress" Version="0.36.*" />
     <PackageReference Include="SixLabors.ImageSharp" Version="2.*" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Lump\Enums\" />
+  </ItemGroup>
+
+  <!-- Include README in package -->
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
