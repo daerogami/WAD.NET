@@ -115,7 +115,9 @@ namespace WAD.NET.Parsers.Dehacked
                 else if (line.StartsWith("Cheat ", StringComparison.OrdinalIgnoreCase))
                 {
                     // Old-style cheat definition
-                    patch.Cheats.Add(ParseCheatLine(line));
+                    var cheatDef = ParseCheatLine(line);
+                    if (cheatDef != null)
+                        patch.Cheats.Add(cheatDef);
                 }
                 else if (line.StartsWith("Misc ", StringComparison.OrdinalIgnoreCase) ||
                          line.Equals("Misc", StringComparison.OrdinalIgnoreCase))
@@ -420,7 +422,8 @@ namespace WAD.NET.Parsers.Dehacked
             while (_lineIndex < _lines.Length && charsRead < totalChars)
             {
                 var line = _lines[_lineIndex];
-                textBuilder.AppendLine(line);
+                textBuilder.Append(line);
+                textBuilder.Append('\n');
                 charsRead += line.Length + 1; // +1 for newline
                 _lineIndex++;
             }
@@ -459,11 +462,8 @@ namespace WAD.NET.Parsers.Dehacked
                 }
 
                 // Stop at next section (but not "Frame X = " which is valid in CODEPTR)
-                if (line.StartsWith("[") || line.StartsWith("Thing ") ||
-                    line.StartsWith("Weapon ") || line.StartsWith("Ammo ") ||
-                    line.StartsWith("Sound ") || line.StartsWith("Sprite ") ||
-                    line.StartsWith("Text ") || line.StartsWith("Misc") ||
-                    (line.StartsWith("Frame ") && !line.Contains("=")))
+                if (IsSectionStart(line) &&
+                    !(line.StartsWith("Frame ", StringComparison.OrdinalIgnoreCase) && line.Contains("=")))
                     break;
 
                 // Parse: Frame <num> = <pointer>
@@ -496,8 +496,7 @@ namespace WAD.NET.Parsers.Dehacked
                 }
 
                 // Stop at next section
-                if (line.StartsWith("[") || line.StartsWith("Thing ") ||
-                    line.StartsWith("Frame ") || line.StartsWith("Weapon "))
+                if (IsSectionStart(line))
                     break;
 
                 // Parse: MNEMONIC = value
@@ -540,8 +539,7 @@ namespace WAD.NET.Parsers.Dehacked
                 }
 
                 // Stop at next section
-                if (line.StartsWith("[") || line.StartsWith("Thing ") ||
-                    line.StartsWith("Frame ") || line.StartsWith("Weapon "))
+                if (IsSectionStart(line))
                     break;
 
                 // Parse: par <episode> <map> <seconds>  (DOOM)
@@ -590,8 +588,7 @@ namespace WAD.NET.Parsers.Dehacked
                 }
 
                 // Stop at next section
-                if (line.StartsWith("[") || line.StartsWith("Thing ") ||
-                    line.StartsWith("Frame ") || line.StartsWith("Weapon "))
+                if (IsSectionStart(line))
                     break;
 
                 var cheat = ParseCheatLine(line);
@@ -602,7 +599,7 @@ namespace WAD.NET.Parsers.Dehacked
             }
         }
 
-        private DehCheat ParseCheatLine(string line)
+        private DehCheat? ParseCheatLine(string line)
         {
             // Format: "Cheat <name> = <sequence>" or just "<name> = <sequence>" in [CHEATS] section
             var match = Regex.Match(line, @"(?:Cheat\s+)?(\w+)\s*=\s*(.+)", RegexOptions.IgnoreCase);
@@ -614,7 +611,7 @@ namespace WAD.NET.Parsers.Dehacked
                     Sequence = match.Groups[2].Value.Trim()
                 };
             }
-            return null!;
+            return null;
         }
 
         private DehMisc ParseMisc()
@@ -659,13 +656,30 @@ namespace WAD.NET.Parsers.Dehacked
             return misc;
         }
 
+        private static bool IsSectionStart(string line)
+        {
+            return line.StartsWith("[", StringComparison.Ordinal) ||
+                   line.StartsWith("Thing ", StringComparison.OrdinalIgnoreCase) ||
+                   line.StartsWith("Frame ", StringComparison.OrdinalIgnoreCase) ||
+                   line.StartsWith("Weapon ", StringComparison.OrdinalIgnoreCase) ||
+                   line.StartsWith("Ammo ", StringComparison.OrdinalIgnoreCase) ||
+                   line.StartsWith("Sound ", StringComparison.OrdinalIgnoreCase) ||
+                   line.StartsWith("Sprite ", StringComparison.OrdinalIgnoreCase) ||
+                   line.StartsWith("Text ", StringComparison.OrdinalIgnoreCase) ||
+                   line.StartsWith("Pointer ", StringComparison.OrdinalIgnoreCase) ||
+                   (line.StartsWith("Misc", StringComparison.OrdinalIgnoreCase) &&
+                    (line.Length == 4 || line[4] == ' ')) ||
+                   line.StartsWith("Cheat ", StringComparison.OrdinalIgnoreCase) ||
+                   line.StartsWith("Patch File", StringComparison.OrdinalIgnoreCase);
+        }
+
         private int ParseIntFromValue(string value)
         {
             // Handle hex values (0x...) and decimal
             value = value.Trim();
             if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
             {
-                return Convert.ToInt32(value, 16);
+                return unchecked((int)Convert.ToUInt32(value, 16));
             }
 
             // Extract just the number part (ignore trailing comments)

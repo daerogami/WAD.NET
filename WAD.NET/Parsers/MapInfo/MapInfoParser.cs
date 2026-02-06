@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 
 namespace WAD.NET.Parsers.MapInfo
 {
@@ -106,33 +105,7 @@ namespace WAD.NET.Parsers.MapInfo
 
         private Queue<string> Tokenize(string content)
         {
-            var tokens = new Queue<string>();
-
-            // Remove comments
-            content = Regex.Replace(content, @"//[^\n]*", "");
-            content = Regex.Replace(content, @"/\*[\s\S]*?\*/", "");
-
-            // Tokenize
-            var pattern = new Regex(@"
-                ""([^""\\]*(?:\\.[^""\\]*)*)""  |  # Quoted string
-                '([^'\\]*(?:\\.[^'\\]*)*)'      |  # Single-quoted string
-                (\{|\}|=|,)                     |  # Punctuation
-                ([^\s\{\}=,""\',]+)                # Words
-            ", RegexOptions.IgnorePatternWhitespace);
-
-            foreach (Match match in pattern.Matches(content))
-            {
-                if (match.Groups[1].Success)
-                    tokens.Enqueue(match.Groups[1].Value); // Quoted string (without quotes)
-                else if (match.Groups[2].Success)
-                    tokens.Enqueue(match.Groups[2].Value); // Single-quoted string
-                else if (match.Groups[3].Success)
-                    tokens.Enqueue(match.Groups[3].Value); // Punctuation
-                else if (match.Groups[4].Success)
-                    tokens.Enqueue(match.Groups[4].Value); // Word
-            }
-
-            return tokens;
+            return DefinitionTokenizer.Tokenize(content);
         }
 
         private string? PeekToken()
@@ -410,6 +383,10 @@ namespace WAD.NET.Parsers.MapInfo
                 {
                     break; // These go in the block
                 }
+                else if (IsTopLevelKeyword(next))
+                {
+                    break; // Don't eat next top-level keyword as episode name
+                }
                 else
                 {
                     def.Name = ParseString();
@@ -467,7 +444,11 @@ namespace WAD.NET.Parsers.MapInfo
                     case "respawn": def.MonstersRespawn = true; break;
                     case "spawnfilter": def.SpawnFilter = ParseInt(); break;
                     case "acsreturn": def.AcsReturn = ParseInt(); break;
-                    case "mustconfirm": def.MustConfirm = true; if (_tokens.Count > 0 && PeekToken() != "}") def.MustConfirmMessage = ParseString(); break;
+                    case "mustconfirm":
+                        def.MustConfirm = true;
+                        if (_tokens.Count > 0 && PeekToken() != "}" && !IsPropertyKeyword(PeekToken()))
+                            def.MustConfirmMessage = ParseString();
+                        break;
                     case "picname": def.PicName = ParseString(); break;
                     case "textcolor": def.TextColor = ParseString(); break;
                     case "name": def.Name = ParseString(); break;
@@ -476,6 +457,118 @@ namespace WAD.NET.Parsers.MapInfo
 
             TryConsume("}");
             return def;
+        }
+
+        private static bool IsTopLevelKeyword(string token)
+        {
+            switch (token?.ToLowerInvariant())
+            {
+                case "map":
+                case "defaultmap":
+                case "adddefaultmap":
+                case "cluster":
+                case "clusterdef":
+                case "episode":
+                case "clearepisodes":
+                case "skill":
+                case "clearskills":
+                case "gameinfo":
+                case "doomednums":
+                case "spawnnums":
+                case "conversationids":
+                case "include":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private static bool IsPropertyKeyword(string? token)
+        {
+            switch (token?.ToLowerInvariant())
+            {
+                // Skill properties
+                case "ammofactor":
+                case "damagefactor":
+                case "respawntime":
+                case "aggressiveness":
+                case "healthfactor":
+                case "key":
+                case "fastmonsters":
+                case "disablecheats":
+                case "respawn":
+                case "spawnfilter":
+                case "acsreturn":
+                case "mustconfirm":
+                case "picname":
+                case "textcolor":
+                case "name":
+                // Map properties
+                case "levelnum":
+                case "titlepatch":
+                case "next":
+                case "secretnext":
+                case "sky1":
+                case "sky2":
+                case "music":
+                case "intermusic":
+                case "cluster":
+                case "par":
+                case "gravity":
+                case "aircontrol":
+                case "fade":
+                case "outsidefog":
+                case "bordertexture":
+                case "enterpic":
+                case "exitpic":
+                case "sndseq":
+                case "sndinfo":
+                case "cdtrack":
+                case "author":
+                case "specialaction":
+                // Map flags
+                case "nointermission":
+                case "allowmonstertelefrags":
+                case "allowrespawn":
+                case "secretlevel":
+                case "lightning":
+                case "evenlighting":
+                case "smoothlighting":
+                case "nosoundclipping":
+                case "allowcrouch":
+                case "allowjump":
+                case "nocrouch":
+                case "nojump":
+                case "nofreelook":
+                case "allowfreelook":
+                case "noinfighting":
+                case "normalinfighting":
+                case "totalinfighting":
+                case "infiniteflightpowerup":
+                case "noautosequences":
+                case "forcenoskystretch":
+                case "allowmonsterrespawn":
+                case "noinventorybar":
+                case "activateowndeathspecials":
+                case "killeractivatesdeathspecials":
+                case "missilesactivateimpactlines":
+                case "filterstarts":
+                case "teamplayon":
+                case "teamplayoff":
+                case "checkswitchrange":
+                case "nocheckswitchrange":
+                case "resethealth":
+                case "resetinventory":
+                case "resetitems":
+                case "fallingdamage":
+                case "nofallingdamage":
+                case "oldfallingdamage":
+                case "strifefallingdamage":
+                case "noautosavehint":
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         private GameInfo ParseGameInfo()

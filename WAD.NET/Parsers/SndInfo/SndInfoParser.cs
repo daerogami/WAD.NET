@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 
 namespace WAD.NET.Parsers.SndInfo
 {
@@ -20,138 +19,141 @@ namespace WAD.NET.Parsers.SndInfo
                 throw new ArgumentNullException(nameof(content));
 
             var info = new SndInfo();
-            var lines = content.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
+            var tokens = DefinitionTokenizer.Tokenize(content, semicolonComments: true);
 
-            for (int i = 0; i < lines.Length; i++)
+            while (tokens.Count > 0)
             {
-                var line = lines[i].Trim();
+                var token = tokens.Dequeue();
 
-                // Skip empty lines
-                if (string.IsNullOrEmpty(line))
-                    continue;
-
-                // Remove inline comments
-                var commentIndex = line.IndexOf("//");
-                if (commentIndex >= 0)
-                    line = line.Substring(0, commentIndex).Trim();
-
-                // Skip full-line comments
-                if (line.StartsWith("//") || line.StartsWith(";") || string.IsNullOrEmpty(line))
-                    continue;
-
-                // Handle multi-line comments (/* */)
-                if (line.StartsWith("/*"))
+                if (token.StartsWith("$"))
                 {
-                    while (i < lines.Length && !lines[i].Contains("*/"))
-                        i++;
-                    continue;
+                    ParseDirective(token, tokens, info);
                 }
-
-                if (line.StartsWith("$"))
-                {
-                    ParseDirective(line, info, lines, ref i);
-                }
-                else
+                else if (tokens.Count > 0)
                 {
                     // Sound definition: logical_name lump_name
-                    var parts = SplitTokens(line);
-                    if (parts.Length >= 2)
-                    {
-                        info.Sounds[parts[0].ToLowerInvariant()] = parts[1].ToUpperInvariant();
-                    }
+                    info.Sounds[token.ToLowerInvariant()] = tokens.Dequeue().ToUpperInvariant();
                 }
             }
 
             return info;
         }
 
-        private void ParseDirective(string line, SndInfo info, string[] lines, ref int lineIndex)
+        private void ParseDirective(string directive, Queue<string> tokens, SndInfo info)
         {
-            var tokens = SplitTokens(line);
-            if (tokens.Length == 0)
-                return;
+            var dir = directive.ToLowerInvariant();
 
-            var directive = tokens[0].ToLowerInvariant();
-
-            switch (directive)
+            switch (dir)
             {
                 case "$pitchshiftrange":
-                    if (tokens.Length >= 2 && int.TryParse(tokens[1], out int pitchRange))
+                    if (tokens.Count > 0 && int.TryParse(tokens.Peek(), out int pitchRange))
+                    {
+                        tokens.Dequeue();
                         info.PitchShiftRange = pitchRange;
+                    }
                     break;
 
                 case "$random":
-                    ParseRandom(line, info);
+                    ParseRandom(tokens, info);
                     break;
 
                 case "$alias":
-                    if (tokens.Length >= 3)
-                        info.Aliases[tokens[1].ToLowerInvariant()] = tokens[2].ToLowerInvariant();
+                    if (tokens.Count >= 2)
+                    {
+                        var name = tokens.Dequeue().ToLowerInvariant();
+                        var target = tokens.Dequeue().ToLowerInvariant();
+                        info.Aliases[name] = target;
+                    }
                     break;
 
                 case "$limit":
-                    if (tokens.Length >= 3 && int.TryParse(tokens[2], out int limit))
-                        info.Limits[tokens[1].ToLowerInvariant()] = limit;
+                    if (tokens.Count >= 2)
+                    {
+                        var name = tokens.Dequeue().ToLowerInvariant();
+                        if (int.TryParse(tokens.Peek(), out int limit))
+                        {
+                            tokens.Dequeue();
+                            info.Limits[name] = limit;
+                        }
+                    }
                     break;
 
                 case "$volume":
-                    if (tokens.Length >= 3 && float.TryParse(tokens[2], out float volume))
-                        info.Volumes[tokens[1].ToLowerInvariant()] = volume;
+                    if (tokens.Count >= 2)
+                    {
+                        var name = tokens.Dequeue().ToLowerInvariant();
+                        if (float.TryParse(tokens.Peek(), out float volume))
+                        {
+                            tokens.Dequeue();
+                            info.Volumes[name] = volume;
+                        }
+                    }
                     break;
 
                 case "$rolloff":
-                    if (tokens.Length >= 4 &&
-                        float.TryParse(tokens[2], out float minDist) &&
-                        float.TryParse(tokens[3], out float maxDist))
-                        info.Rolloffs[tokens[1].ToLowerInvariant()] = (minDist, maxDist);
+                    if (tokens.Count >= 3)
+                    {
+                        var name = tokens.Dequeue().ToLowerInvariant();
+                        if (float.TryParse(tokens.Peek(), out float minDist))
+                        {
+                            tokens.Dequeue();
+                            if (float.TryParse(tokens.Peek(), out float maxDist))
+                            {
+                                tokens.Dequeue();
+                                info.Rolloffs[name] = (minDist, maxDist);
+                            }
+                        }
+                    }
                     break;
 
                 case "$singular":
-                    if (tokens.Length >= 2)
-                        info.SingularSounds.Add(tokens[1].ToLowerInvariant());
+                    if (tokens.Count > 0)
+                        info.SingularSounds.Add(tokens.Dequeue().ToLowerInvariant());
                     break;
 
                 case "$attenuation":
-                    // $attenuation <name> <type>
-                    // Skip for now, not commonly used
+                    // $attenuation <name> <type> - skip
+                    if (tokens.Count >= 2) { tokens.Dequeue(); tokens.Dequeue(); }
                     break;
 
                 case "$playersound":
-                    // $playersound <player class> <gender> <slot> <sound>
-                    if (tokens.Length >= 5)
+                    if (tokens.Count >= 4)
                     {
                         info.PlayerSounds.Add(new PlayerSoundDefinition
                         {
-                            PlayerClass = tokens[1],
-                            Gender = tokens[2],
-                            SlotName = tokens[3],
-                            SoundName = tokens[4]
+                            PlayerClass = tokens.Dequeue(),
+                            Gender = tokens.Dequeue(),
+                            SlotName = tokens.Dequeue(),
+                            SoundName = tokens.Dequeue()
                         });
                     }
                     break;
 
                 case "$playersounddup":
-                    // $playersounddup <player class> <gender> <slot> <source slot>
-                    // Links one slot to another
+                    // $playersounddup <player class> <gender> <slot> <source slot> - skip
+                    if (tokens.Count >= 4) { tokens.Dequeue(); tokens.Dequeue(); tokens.Dequeue(); tokens.Dequeue(); }
                     break;
 
                 case "$playercompat":
-                    // $playercompat <player class> <gender> <compat class> <compat gender>
-                    if (tokens.Length >= 5)
+                    if (tokens.Count >= 4)
                     {
                         info.PlayerCompatibility.Add(new PlayerCompatDefinition
                         {
-                            PlayerClass = tokens[1],
-                            Gender = tokens[2],
-                            CompatibleClass = tokens[3],
-                            CompatibleGender = tokens[4]
+                            PlayerClass = tokens.Dequeue(),
+                            Gender = tokens.Dequeue(),
+                            CompatibleClass = tokens.Dequeue(),
+                            CompatibleGender = tokens.Dequeue()
                         });
                     }
                     break;
 
                 case "$musicalias":
-                    if (tokens.Length >= 3)
-                        info.MusicAliases[tokens[1].ToLowerInvariant()] = tokens[2].ToLowerInvariant();
+                    if (tokens.Count >= 2)
+                    {
+                        var name = tokens.Dequeue().ToLowerInvariant();
+                        var target = tokens.Dequeue().ToLowerInvariant();
+                        info.MusicAliases[name] = target;
+                    }
                     break;
 
                 case "$ambient":
@@ -159,12 +161,13 @@ namespace WAD.NET.Parsers.SndInfo
                     break;
 
                 case "$environment":
-                    if (tokens.Length >= 3 && int.TryParse(tokens[1], out int envId))
+                    if (tokens.Count >= 2 && int.TryParse(tokens.Peek(), out int envId))
                     {
+                        tokens.Dequeue();
                         info.Environments.Add(new EnvironmentDefinition
                         {
                             Id = envId,
-                            Name = tokens[2]
+                            Name = tokens.Count > 0 ? tokens.Dequeue() : ""
                         });
                     }
                     break;
@@ -175,61 +178,65 @@ namespace WAD.NET.Parsers.SndInfo
                 case "$ifstrife":
                 case "$ifchex":
                 case "$endif":
-                    // Conditional compilation - skip (we'd need to know the game type)
-                    break;
-
                 case "$map":
                 case "$registered":
                 case "$archivepath":
-                    // Various configuration directives - skip
-                    break;
-
-                // Ignore unknown directives
-                default:
+                    // Skip configuration/conditional directives
                     break;
             }
         }
 
-        private void ParseRandom(string line, SndInfo info)
+        private void ParseRandom(Queue<string> tokens, SndInfo info)
         {
-            // Format: $random <name> { sound1 sound2 ... }
-            var match = Regex.Match(line, @"\$random\s+(\S+)\s*\{([^}]+)\}", RegexOptions.IgnoreCase);
-            if (match.Success)
-            {
-                var name = match.Groups[1].Value.ToLowerInvariant();
-                var soundsText = match.Groups[2].Value;
-                var sounds = SplitTokens(soundsText);
-
-                for (int i = 0; i < sounds.Length; i++)
-                    sounds[i] = sounds[i].ToLowerInvariant();
-
-                info.RandomSounds[name] = sounds;
-            }
-        }
-
-        private void ParseAmbient(string[] tokens, SndInfo info)
-        {
-            // Format: $ambient <index> <sound> [type] [mode] [volume]
-            if (tokens.Length < 3)
+            if (tokens.Count == 0)
                 return;
 
-            if (!int.TryParse(tokens[1], out int index))
+            var name = tokens.Dequeue().ToLowerInvariant();
+
+            if (tokens.Count > 0 && tokens.Peek() == "{")
+                tokens.Dequeue(); // consume {
+
+            var sounds = new List<string>();
+            while (tokens.Count > 0 && tokens.Peek() != "}")
+                sounds.Add(tokens.Dequeue().ToLowerInvariant());
+
+            if (tokens.Count > 0)
+                tokens.Dequeue(); // consume }
+
+            info.RandomSounds[name] = sounds.ToArray();
+        }
+
+        private void ParseAmbient(Queue<string> tokens, SndInfo info)
+        {
+            if (tokens.Count < 2)
+                return;
+
+            if (!int.TryParse(tokens.Peek(), out int index))
+                return;
+            tokens.Dequeue();
+
+            if (tokens.Count == 0)
                 return;
 
             var ambient = new AmbientSoundDefinition
             {
                 Index = index,
-                SoundName = tokens[2].ToLowerInvariant(),
+                SoundName = tokens.Dequeue().ToLowerInvariant(),
                 Type = AmbientType.Point,
                 PlayMode = AmbientPlayMode.Continuous,
                 Volume = 1.0f
             };
 
-            for (int i = 3; i < tokens.Length; i++)
+            // Parse optional type/mode/volume tokens until we hit a directive or another sound def
+            while (tokens.Count > 0)
             {
-                var token = tokens[i].ToLowerInvariant();
+                var peek = tokens.Peek();
+                if (peek.StartsWith("$") || peek == "{" || peek == "}")
+                    break;
 
-                switch (token)
+                var tok = tokens.Dequeue().ToLowerInvariant();
+
+                switch (tok)
                 {
                     case "point":
                         ambient.Type = AmbientType.Point;
@@ -245,50 +252,34 @@ namespace WAD.NET.Parsers.SndInfo
                         break;
                     case "random":
                         ambient.PlayMode = AmbientPlayMode.Random;
-                        // Next two tokens should be min and max time
-                        if (i + 2 < tokens.Length)
+                        if (tokens.Count > 0 && float.TryParse(tokens.Peek(), out float minTime))
                         {
-                            if (float.TryParse(tokens[i + 1], out float minTime))
-                                ambient.MinTime = minTime;
-                            if (float.TryParse(tokens[i + 2], out float maxTime))
+                            tokens.Dequeue();
+                            ambient.MinTime = minTime;
+                            if (tokens.Count > 0 && float.TryParse(tokens.Peek(), out float maxTime))
+                            {
+                                tokens.Dequeue();
                                 ambient.MaxTime = maxTime;
-                            i += 2;
+                            }
                         }
                         break;
                     case "periodic":
                         ambient.PlayMode = AmbientPlayMode.Periodic;
-                        if (i + 1 < tokens.Length && float.TryParse(tokens[i + 1], out float period))
+                        if (tokens.Count > 0 && float.TryParse(tokens.Peek(), out float period))
                         {
+                            tokens.Dequeue();
                             ambient.MinTime = period;
                             ambient.MaxTime = period;
-                            i++;
                         }
                         break;
                     default:
-                        // Try to parse as volume
-                        if (float.TryParse(token, out float vol))
+                        if (float.TryParse(tok, out float vol))
                             ambient.Volume = vol;
                         break;
                 }
             }
 
             info.AmbientSounds[index] = ambient;
-        }
-
-        private string[] SplitTokens(string line)
-        {
-            var tokens = new List<string>();
-            var matches = Regex.Matches(line, @"""([^""]*)""|(\S+)");
-
-            foreach (Match match in matches)
-            {
-                if (match.Groups[1].Success)
-                    tokens.Add(match.Groups[1].Value);
-                else if (match.Groups[2].Success)
-                    tokens.Add(match.Groups[2].Value);
-            }
-
-            return tokens.ToArray();
         }
     }
 }

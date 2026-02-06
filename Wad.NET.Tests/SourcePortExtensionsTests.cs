@@ -730,6 +730,141 @@ shotgn DSSHOTGN
 
         #endregion
 
+        #region Parser Bug Fix Regression Tests
+
+        // Bug 1: Comments in strings - MapInfo regex comment stripping destroyed URLs
+        [Fact]
+        public void MapInfoParser_ShouldPreserveUrlsInStrings()
+        {
+            var mapinfo = @"
+map MAP01 ""http://example.com/mymap""
+{
+    par = 30
+}";
+            var parser = new MapInfoParser(mapinfo);
+            var info = parser.Parse();
+            Assert.Equal("http://example.com/mymap", info.Maps["MAP01"].NiceName);
+        }
+
+        // Bug 2: mustconfirm greedy consume - should not eat the next keyword
+        [Fact]
+        public void MapInfoParser_MustConfirm_ShouldNotConsumeNextKeyword()
+        {
+            var mapinfo = @"
+skill nightmare
+{
+    mustconfirm
+    fastmonsters
+    name = ""Nightmare!""
+}";
+            var parser = new MapInfoParser(mapinfo);
+            var info = parser.Parse();
+            var skill = info.Skills[0];
+            Assert.True(skill.MustConfirm);
+            Assert.Null(skill.MustConfirmMessage);
+            Assert.True(skill.FastMonsters);
+        }
+
+        // Bug 3: Episode parsing eating next keyword
+        [Fact]
+        public void MapInfoParser_Episode_ShouldNotEatNextTopLevelKeyword()
+        {
+            var mapinfo = @"
+episode E1M1
+{
+    name = ""Knee-Deep in the Dead""
+}
+map E1M1 ""Hangar""
+{
+    par = 30
+}";
+            var parser = new MapInfoParser(mapinfo);
+            var info = parser.Parse();
+            Assert.Single(info.Episodes);
+            Assert.Single(info.Maps);
+            Assert.True(info.Maps.ContainsKey("E1M1"));
+        }
+
+        // Bug 4: Multi-line $random
+        [Fact]
+        public void SndInfoParser_ShouldParseMultiLineRandom()
+        {
+            var sndinfo = @"
+$random weapons/shotgun {
+    weapons/shotgun1
+    weapons/shotgun2
+    weapons/shotgun3
+}
+";
+            var parser = new SndInfoParser();
+            var info = parser.Parse(sndinfo);
+            Assert.True(info.RandomSounds.ContainsKey("weapons/shotgun"));
+            Assert.Equal(3, info.RandomSounds["weapons/shotgun"].Length);
+        }
+
+        // Bug 5: Block comments
+        [Fact]
+        public void SndInfoParser_ShouldHandleBlockComments()
+        {
+            var sndinfo = @"
+pistol DSPISTOL
+/* this is
+   a multi-line
+   comment */
+shotgn DSSHOTGN
+";
+            var parser = new SndInfoParser();
+            var info = parser.Parse(sndinfo);
+            Assert.Equal(2, info.Sounds.Count);
+        }
+
+        // Bug 7: Hex overflow
+        [Fact]
+        public void DehackedParser_ShouldHandleLargeHexValues()
+        {
+            var deh = @"
+Thing 1 (Test)
+Bits = 0x80000000
+";
+            var parser = new DehackedParser(deh);
+            var patch = parser.Parse();
+            Assert.Equal(unchecked((uint)0x80000000), patch.Things[0].Flags);
+        }
+
+        // Bug 8: Section terminators - strings section should stop at Ammo section
+        [Fact]
+        public void DehackedParser_ShouldStopStringsSectionAtAmmo()
+        {
+            var deh = @"
+[STRINGS]
+HUSTR_E1M1 = Hangar
+
+Ammo 0
+Max ammo = 200
+";
+            var parser = new DehackedParser(deh);
+            var patch = parser.Parse();
+            Assert.Single(patch.Strings);
+            Assert.Equal("HUSTR_E1M1", patch.Strings[0].Mnemonic);
+            Assert.Single(patch.Ammo);
+        }
+
+        // Bug 9: Null cheat handling
+        [Fact]
+        public void DehackedParser_ShouldNotAddNullCheats()
+        {
+            var deh = @"
+Cheat badlineformat
+";
+            var parser = new DehackedParser(deh);
+            var patch = parser.Parse();
+            // Should not crash and should not have null entries
+            foreach (var cheat in patch.Cheats)
+                Assert.NotNull(cheat);
+        }
+
+        #endregion
+
         #region Boom Features Tests
 
         [Fact]
