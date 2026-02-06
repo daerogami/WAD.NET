@@ -49,6 +49,11 @@ dotnet test Wad.NET.Tests/Wad.NET.Tests.csproj
 dotnet build WAD.NET.sln -c Release
 ```
 
+## Git Commit Rules
+
+- Always prefix commit messages with `(vibes)`
+- Never add `Co-Authored-By` or any other credit/attribution to Claude in commits
+
 ## Development Guidelines
 
 ### Code Style
