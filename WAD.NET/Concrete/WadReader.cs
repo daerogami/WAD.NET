@@ -4,6 +4,7 @@ using System.Text;
 using WAD.NET.Abstract;
 using WAD.NET.Compression;
 using WAD.NET.Concrete.Maps;
+using WAD.NET.Definitions;
 using WAD.NET.Enums;
 using WAD.NET.Interfaces;
 using WAD.NET.Maps;
@@ -158,10 +159,10 @@ namespace WAD.NET.Concrete
 
             return magic switch
             {
-                "IWAD" => WadType.IWAD,
-                "PWAD" => WadType.PWAD,
+                BinaryConstants.IwadMarker => WadType.IWAD,
+                BinaryConstants.PwadMarker => WadType.PWAD,
                 _ => throw new FormatException(
-                    $"Unknown WAD type '{magic}'. Expected 'IWAD' or 'PWAD'.")
+                    $"Unknown WAD type '{magic}'. Expected '{BinaryConstants.IwadMarker}' or '{BinaryConstants.PwadMarker}'.")
             };
         }
 

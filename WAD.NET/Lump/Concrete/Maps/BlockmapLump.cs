@@ -2,6 +2,7 @@ using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using WAD.NET.Abstract;
+using WAD.NET.Definitions;
 using WAD.NET.Interfaces;
 
 namespace WAD.NET.Concrete.Maps
@@ -122,7 +123,7 @@ namespace WAD.NET.Concrete.Maps
             while (offset + 2 <= Data.Length)
             {
                 ushort linedef = BinaryPrimitives.ReadUInt16LittleEndian(Data.AsSpan(offset));
-                if (linedef == 0xFFFF)
+                if (linedef == BinaryConstants.BlockmapTerminator)
                     break;
 
                 linedefs.Add(linedef);

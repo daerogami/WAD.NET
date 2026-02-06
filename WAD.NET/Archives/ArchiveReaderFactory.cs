@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Text;
+using WAD.NET.Definitions;
 
 namespace WAD.NET.Archives
 {
@@ -9,8 +11,8 @@ namespace WAD.NET.Archives
     public static class ArchiveReaderFactory
     {
         // Magic bytes for file type detection
-        private static readonly byte[] WadMagicIWAD = { (byte)'I', (byte)'W', (byte)'A', (byte)'D' };
-        private static readonly byte[] WadMagicPWAD = { (byte)'P', (byte)'W', (byte)'A', (byte)'D' };
+        private static readonly byte[] WadMagicIWAD = Encoding.ASCII.GetBytes(BinaryConstants.IwadMarker);
+        private static readonly byte[] WadMagicPWAD = Encoding.ASCII.GetBytes(BinaryConstants.PwadMarker);
         private static readonly byte[] ZipMagic = { (byte)'P', (byte)'K', 0x03, 0x04 };
         private static readonly byte[] SevenZipMagic = { 0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C };
 

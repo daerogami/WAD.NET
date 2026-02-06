@@ -1,6 +1,7 @@
 using System;
 using System.Buffers.Binary;
 using System.Text;
+using WAD.NET.Definitions.GameData;
 
 namespace WAD.NET.Definitions.Classic.Map
 {
@@ -60,12 +61,12 @@ namespace WAD.NET.Definitions.Classic.Map
         /// <summary>
         /// True if this is a secret sector.
         /// </summary>
-        public bool IsSecret => Special == 9;
+        public bool IsSecret => SectorDatabase.IsSecret(Special);
 
         /// <summary>
         /// True if this sector causes damage.
         /// </summary>
-        public bool IsDamaging => Special == 4 || Special == 5 || Special == 7 || Special == 11 || Special == 16;
+        public bool IsDamaging => SectorDatabase.IsDamaging(Special);
 
         /// <summary>
         /// Parses a DoomSector from binary data.

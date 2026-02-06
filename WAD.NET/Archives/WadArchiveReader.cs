@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using WAD.NET.Concrete;
+using WAD.NET.Definitions;
 using WAD.NET.Enums;
 using WAD.NET.Maps;
 
@@ -69,8 +70,8 @@ namespace WAD.NET.Archives
             var magic = new string(_reader.ReadChars(4));
             WadType = magic switch
             {
-                "IWAD" => WadType.IWAD,
-                "PWAD" => WadType.PWAD,
+                BinaryConstants.IwadMarker => WadType.IWAD,
+                BinaryConstants.PwadMarker => WadType.PWAD,
                 _ => throw new FormatException($"Invalid WAD header: {magic}")
             };
 

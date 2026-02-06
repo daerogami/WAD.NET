@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using WAD.NET.Archives;
+using WAD.NET.Definitions;
 using WAD.NET.Enums;
 
 namespace WAD.NET.Authoring
@@ -159,7 +160,7 @@ namespace WAD.NET.Authoring
             using var writer = new BinaryWriter(output, Encoding.ASCII, leaveOpen: true);
 
             // Write header magic
-            string magic = _wadType == WadType.IWAD ? "IWAD" : "PWAD";
+            string magic = _wadType == WadType.IWAD ? BinaryConstants.IwadMarker : BinaryConstants.PwadMarker;
             writer.Write(Encoding.ASCII.GetBytes(magic));
 
             // Write lump count

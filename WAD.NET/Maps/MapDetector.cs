@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using WAD.NET.Definitions.GameData;
 using WAD.NET.Enums;
 
 namespace WAD.NET.Maps
@@ -93,10 +94,8 @@ namespace WAD.NET.Maps
         /// <returns>The episode number, or -1 if not a DOOM format map.</returns>
         public static int GetEpisode(string mapName)
         {
-            if (string.IsNullOrEmpty(mapName) || !DoomMapPattern.IsMatch(mapName))
-                return -1;
-
-            return mapName[1] - '0';
+            var parsed = MapNamePatterns.Parse(mapName);
+            return parsed?.Episode ?? -1;
         }
 
         /// <summary>
@@ -106,16 +105,8 @@ namespace WAD.NET.Maps
         /// <returns>The map number, or -1 if not recognized.</returns>
         public static int GetMapNumber(string mapName)
         {
-            if (string.IsNullOrEmpty(mapName))
-                return -1;
-
-            if (DoomMapPattern.IsMatch(mapName))
-                return mapName[3] - '0';
-
-            if (Doom2MapPattern.IsMatch(mapName))
-                return int.Parse(mapName.Substring(3));
-
-            return -1;
+            var parsed = MapNamePatterns.Parse(mapName);
+            return parsed?.Map ?? -1;
         }
     }
 }

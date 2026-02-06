@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using WAD.NET.Definitions;
 
 namespace WAD.NET.Detection
 {
@@ -16,7 +17,7 @@ namespace WAD.NET.Detection
 
         private static readonly HashSet<string> ExcludedSprites = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "TNT1", "----"
+            SpriteConstants.Invisible, SpriteConstants.Null
         };
 
         // Matches: optional whitespace, 4-char sprite name, frame letters (A-Z or 0-9), then rest of line

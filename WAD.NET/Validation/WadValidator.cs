@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using WAD.NET.Concrete;
 using WAD.NET.Concrete.Maps;
 using WAD.NET.Definitions.Classic.Map;
+using WAD.NET.Definitions.GameData;
 using WAD.NET.Definitions.Hexen;
 using WAD.NET.Interfaces;
 using WAD.NET.UDMF;
@@ -106,8 +107,9 @@ namespace WAD.NET.Validation
             "STGNUM5", "STGNUM6", "STGNUM7", "STGNUM8", "STGNUM9"
         };
 
-        // Player start thing types
-        private static readonly HashSet<int> PlayerStartTypes = new HashSet<int> { 1, 2, 3, 4, 11 };
+        // Player start thing types (derived from ThingDatabase)
+        private static readonly HashSet<int> PlayerStartTypes = new HashSet<int>(
+            ThingDatabase.GetByCategory(ThingCategory.Player).Select(t => t.DoomEdNum));
 
         /// <summary>
         /// Validates a WAD and returns a detailed validation result.

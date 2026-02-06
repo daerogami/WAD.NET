@@ -1,6 +1,7 @@
 using System;
 using System.Buffers.Binary;
 using System.Text;
+using WAD.NET.Definitions;
 
 namespace WAD.NET.Definitions.Classic.Map
 {
@@ -50,17 +51,17 @@ namespace WAD.NET.Definitions.Classic.Map
         /// <summary>
         /// True if this sidedef has an upper texture.
         /// </summary>
-        public bool HasUpperTexture => !string.IsNullOrEmpty(UpperTexture) && UpperTexture != "-";
+        public bool HasUpperTexture => !TextureConstants.IsNull(UpperTexture);
 
         /// <summary>
         /// True if this sidedef has a lower texture.
         /// </summary>
-        public bool HasLowerTexture => !string.IsNullOrEmpty(LowerTexture) && LowerTexture != "-";
+        public bool HasLowerTexture => !TextureConstants.IsNull(LowerTexture);
 
         /// <summary>
         /// True if this sidedef has a middle texture.
         /// </summary>
-        public bool HasMiddleTexture => !string.IsNullOrEmpty(MiddleTexture) && MiddleTexture != "-";
+        public bool HasMiddleTexture => !TextureConstants.IsNull(MiddleTexture);
 
         /// <summary>
         /// Parses a DoomSidedef from binary data.
