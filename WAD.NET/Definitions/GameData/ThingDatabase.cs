@@ -11,6 +11,7 @@ namespace WAD.NET.Definitions.GameData
     {
         private static readonly Dictionary<int, ThingDefinition> _things = new Dictionary<int, ThingDefinition>();
         private static readonly Dictionary<string, int> _nameToId = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<string, ThingDefinition> _nameToThing = new Dictionary<string, ThingDefinition>(StringComparer.OrdinalIgnoreCase);
 
         static ThingDatabase()
         {
@@ -37,7 +38,7 @@ namespace WAD.NET.Definitions.GameData
         /// <returns>The thing definition, or null if not found.</returns>
         public static ThingDefinition? GetByName(string name)
         {
-            return _nameToId.TryGetValue(name, out var id) ? Get(id) : null;
+            return _nameToThing.TryGetValue(name, out var def) ? def : null;
         }
 
         /// <summary>
@@ -86,16 +87,22 @@ namespace WAD.NET.Definitions.GameData
         /// <returns>True if the name matches a registered thing.</returns>
         public static bool IsKnownActor(string className)
         {
-            return _nameToId.ContainsKey(className);
+            return _nameToThing.ContainsKey(className);
         }
 
         private static void Register(ThingDefinition def)
         {
             _things[def.DoomEdNum] = def;
             if (!string.IsNullOrEmpty(def.ClassName))
+            {
                 _nameToId[def.ClassName] = def.DoomEdNum;
+                _nameToThing[def.ClassName] = def;
+            }
             if (def.LegacyName != null)
+            {
                 _nameToId[def.LegacyName] = def.DoomEdNum;
+                _nameToThing[def.LegacyName] = def;
+            }
         }
 
         private static void RegisterDoomThings()

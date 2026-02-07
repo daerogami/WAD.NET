@@ -60,6 +60,7 @@ namespace WAD.NET.Tests.Infrastructure
             // Load PK3 paths
             paths.BrutalDoom = config["WadPaths:Pk3s:BrutalDoom"] ?? "";
             paths.GzdoomPk3 = config["WadPaths:Pk3s:Gzdoom_Pk3"] ?? "";
+            paths.ZandronumPk3 = config["WadPaths:Pk3s:Zandronum_Pk3"] ?? "";
             paths.CustomMod = config["WadPaths:Pk3s:CustomMod"] ?? "";
 
             return paths;
@@ -118,6 +119,7 @@ namespace WAD.NET.Tests.Infrastructure
         // PK3s
         public string BrutalDoom { get; set; } = "";
         public string GzdoomPk3 { get; set; } = "";
+        public string ZandronumPk3 { get; set; } = "";
         public string CustomMod { get; set; } = "";
 
         /// <summary>
@@ -162,6 +164,7 @@ namespace WAD.NET.Tests.Infrastructure
             {
                 ["BrutalDoom"] = BrutalDoom,
                 ["GzdoomPk3"] = GzdoomPk3,
+                ["ZandronumPk3"] = ZandronumPk3,
                 ["CustomMod"] = CustomMod
             };
         }

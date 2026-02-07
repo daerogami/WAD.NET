@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -662,15 +663,15 @@ namespace WAD.NET.Tests
         #region Pk7Reader Tests
 
         /// <summary>
-        /// Helper method to safely delete temp files, ignoring errors from SharpCompress file handle issues.
-        /// SharpCompress's SevenZipArchive may not release file handles immediately on Windows.
+        /// Helper method to safely delete temp files/directories, ignoring errors
+        /// from SharpCompress file handle issues.
         /// </summary>
-        private static void SafeDeleteTempFile(string tempFile)
+        private static void SafeDeleteTempFile(string path)
         {
             try
             {
-                if (File.Exists(tempFile))
-                    File.Delete(tempFile);
+                if (File.Exists(path))
+                    File.Delete(path);
             }
             catch
             {
@@ -678,86 +679,147 @@ namespace WAD.NET.Tests
             }
         }
 
-        // Minimal 7z archive containing:
-        // - sprites/PLAYA1.png (4 bytes: PNG magic)
-        // - flats/FLOOR1.png (4 bytes: PNG magic)
-        // - music/D_E1M1.ogg (4 bytes: OGG magic)
-        // - maps/MAP01.wad (embedded WAD)
-        // - MAPINFO.txt (definition file)
-        // - DECORATE.txt (script file)
-        // Created with 7-Zip using LZMA2 compression
-        private static readonly byte[] Test7zArchiveData = Convert.FromBase64String(
-            "N3zYryccAAQZqZY6EwAAAAAAAABiAAAAAAAAAMBxgNqlAyLOcgAYFgwI" +
-            "pRRwkNHkuHKnYQSqPQogiQIbJwp1iVXiJOWQ+F39SZZ8AqVWBM6L8WEk" +
-            "bpJVPCjB+tBODPuS0NJQa/C5VXkBn3gkh4rLmBHBQ/r5RRZ3T/NNFJ7P" +
-            "8h+1eLaAiUUDNXm9AAABBAABGQAxAAAAAAAAAAARABkAc3ByaXRlcy9Q" +
-            "TEFZQTEucG5nAAAZABEAZmxhdHMvRkxPT1IxLnBuZwAAGQARAG11c2lj" +
-            "L0RfRTFNMS5vZ2cAABkADwBtYXBzL01BUDAxLndhZAAAGQALAE1BUElO" +
-            "Rk8udHh0AAAZAAwAREVDT1JBVEUudHh0AAAXBQABGQEBAAAAB7AH7J4A" +
-            "BwsBAAEhIQEAAAwwoA4AAAAAgQ=="
-        );
-
-        /// <summary>
-        /// Creates a minimal 7z archive in memory for testing.
-        /// Since SharpCompress has limited 7z write support, we use a pre-built archive.
-        /// </summary>
-        private static MemoryStream CreateTest7z()
+        private static void SafeDeleteTempDir(string path)
         {
-            return new MemoryStream(Test7zArchiveData);
+            try
+            {
+                if (Directory.Exists(path))
+                    Directory.Delete(path, true);
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
         }
 
         /// <summary>
-        /// Creates a simpler 7z archive with just basic test content.
-        /// This is an alternative approach using a minimal test file.
+        /// Finds 7z.exe on the system. Returns null if not found.
         /// </summary>
-        private static MemoryStream CreateMinimal7zFromZip()
+        private static string? Find7zExecutable()
         {
-            // For testing purposes, we'll create a ZIP and the tests that require
-            // actual 7z will use the embedded data. This helper creates a compatible
-            // test structure that can be used when 7z-specific features aren't needed.
-            var ms = new MemoryStream();
-            using (var archive = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+            // Check common install locations
+            var candidates = new[]
             {
-                AddZipEntry(archive, "sprites/PLAYA1.png", new byte[] { 0x89, 0x50, 0x4E, 0x47 });
-                AddZipEntry(archive, "flats/FLOOR1.png", new byte[] { 0x89, 0x50, 0x4E, 0x47 });
-                AddZipEntry(archive, "music/D_E1M1.ogg", new byte[] { 0x4F, 0x67, 0x67, 0x53 });
-                AddZipEntry(archive, "maps/MAP01.wad", CreateMinimalWadData());
-                AddZipEntry(archive, "MAPINFO.txt", Encoding.UTF8.GetBytes("map MAP01 { }"));
-                AddZipEntry(archive, "DECORATE.txt", Encoding.UTF8.GetBytes("actor Test { }"));
+                @"C:\Program Files\7-Zip\7z.exe",
+                @"C:\Program Files (x86)\7-Zip\7z.exe",
+            };
+
+            foreach (var candidate in candidates)
+            {
+                if (File.Exists(candidate))
+                    return candidate;
             }
-            ms.Position = 0;
-            return ms;
+
+            // Try PATH
+            try
+            {
+                var psi = new ProcessStartInfo("7z.exe", "--help")
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                using var proc = Process.Start(psi);
+                proc?.WaitForExit(3000);
+                if (proc?.ExitCode == 0)
+                    return "7z.exe";
+            }
+            catch
+            {
+                // Not in PATH
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Creates a valid 7z archive using the 7z CLI.
+        /// Returns the path to the archive, or null if 7z is not available.
+        /// The caller is responsible for cleanup.
+        /// </summary>
+        private static string? CreateTest7zArchive()
+        {
+            var sevenZip = Find7zExecutable();
+            if (sevenZip == null)
+                return null;
+
+            var id = Guid.NewGuid().ToString("N");
+            var contentDir = Path.Combine(Path.GetTempPath(), $"pk7test_content_{id}");
+            var archivePath = Path.Combine(Path.GetTempPath(), $"pk7test_{id}.7z");
+
+            try
+            {
+                // Create content directory structure
+                Directory.CreateDirectory(Path.Combine(contentDir, "sprites"));
+                Directory.CreateDirectory(Path.Combine(contentDir, "flats"));
+                Directory.CreateDirectory(Path.Combine(contentDir, "music"));
+                Directory.CreateDirectory(Path.Combine(contentDir, "maps"));
+
+                // Write test files
+                File.WriteAllBytes(Path.Combine(contentDir, "sprites", "PLAYA1.png"),
+                    new byte[] { 0x89, 0x50, 0x4E, 0x47 });
+                File.WriteAllBytes(Path.Combine(contentDir, "flats", "FLOOR1.png"),
+                    new byte[] { 0x89, 0x50, 0x4E, 0x47 });
+                File.WriteAllBytes(Path.Combine(contentDir, "music", "D_E1M1.ogg"),
+                    new byte[] { 0x4F, 0x67, 0x67, 0x53 });
+                File.WriteAllBytes(Path.Combine(contentDir, "maps", "MAP01.wad"),
+                    CreateMinimalWadData());
+                File.WriteAllText(Path.Combine(contentDir, "MAPINFO.txt"), "map MAP01 { }");
+                File.WriteAllText(Path.Combine(contentDir, "DECORATE.txt"), "actor Test { }");
+
+                // Create 7z archive
+                var psi = new ProcessStartInfo(sevenZip, $"a \"{archivePath}\" \"{contentDir}\\*\"")
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                using var proc = Process.Start(psi);
+                proc?.WaitForExit(10000);
+
+                if (proc?.ExitCode != 0 || !File.Exists(archivePath))
+                    return null;
+
+                return archivePath;
+            }
+            catch
+            {
+                SafeDeleteTempFile(archivePath);
+                return null;
+            }
+            finally
+            {
+                SafeDeleteTempDir(contentDir);
+            }
+        }
+
+        /// <summary>
+        /// Gets or creates the shared test 7z archive path.
+        /// Cached across tests in a single run for performance.
+        /// </summary>
+        private static readonly Lazy<string?> _test7zPath = new(CreateTest7zArchive);
+
+        /// <summary>
+        /// Returns the path to a valid 7z test archive, skipping if 7z CLI is unavailable.
+        /// </summary>
+        private static string Require7zArchive()
+        {
+            var path = _test7zPath.Value;
+            Skip.If(path == null, "7z CLI not available — cannot create test archive");
+            return path!;
         }
 
         [SkippableFact]
         public void Pk7Reader_ShouldReturnCorrectArchiveType()
         {
-            // For this test, we need to use a real 7z file or skip if unavailable
-            // Since creating 7z programmatically is complex, we test the Type property
-            // by mocking or using file-based tests in integration scenarios
+            var archivePath = Require7zArchive();
 
-            // This test verifies the Type property returns PK7
-            // We'll use a file-based approach with a temporary file
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
+            using var reader = new Pk7Reader(archivePath);
 
-                using (var reader = new Pk7Reader(tempFile))
-                {
-                    Assert.Equal(ArchiveType.PK7, reader.Type);
-                    Assert.Equal(tempFile, reader.Path);
-                } // Reader disposed here, before finally block
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
-            {
-                // If the embedded data is invalid, skip the test
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+            Assert.Equal(ArchiveType.PK7, reader.Type);
+            Assert.Equal(archivePath, reader.Path);
         }
 
         [Fact]
@@ -771,507 +833,236 @@ namespace WAD.NET.Tests
         [SkippableFact]
         public void Pk7Reader_ShouldCreateFromStream()
         {
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
-                using (var stream = File.OpenRead(tempFile))
-                using (var reader = new Pk7Reader(stream))
-                {
-                    Assert.Equal(ArchiveType.PK7, reader.Type);
-                    Assert.Equal(string.Empty, reader.Path); // Stream constructor sets empty path
-                } // Both reader and stream disposed here, before finally block
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
-            {
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+            var archivePath = Require7zArchive();
+
+            using var stream = File.OpenRead(archivePath);
+            using var reader = new Pk7Reader(stream);
+
+            Assert.Equal(ArchiveType.PK7, reader.Type);
+            Assert.Equal(string.Empty, reader.Path);
         }
 
         [SkippableFact]
         public void Pk7Reader_GetEntries_ShouldReturnAllEntries()
         {
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
+            var archivePath = Require7zArchive();
 
-                using (var reader = new Pk7Reader(tempFile))
-                {
-                    var entries = reader.GetEntries().ToList();
+            using var reader = new Pk7Reader(archivePath);
+            var entries = reader.GetEntries().ToList();
 
-                    Assert.NotEmpty(entries);
-                } // Reader disposed here, before finally block
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
-            {
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+            Assert.NotEmpty(entries);
+            Assert.Equal(6, entries.Count);
         }
 
         [SkippableFact]
         public void Pk7Reader_GetEntry_ShouldFindEntryCaseInsensitive()
         {
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
+            var archivePath = Require7zArchive();
 
-                using (var reader = new Pk7Reader(tempFile))
-                {
-                    // Test case-insensitive lookup
-                    var entryLower = reader.GetEntry("mapinfo");
-                    var entryUpper = reader.GetEntry("MAPINFO");
+            using var reader = new Pk7Reader(archivePath);
 
-                    // At least one should exist if the archive has MAPINFO
-                    if (reader.Contains("MAPINFO") || reader.Contains("mapinfo"))
-                    {
-                        Assert.NotNull(entryLower ?? entryUpper);
-                    }
-                } // Reader disposed here, before finally block
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
-            {
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+            var entryLower = reader.GetEntry("mapinfo");
+            var entryUpper = reader.GetEntry("MAPINFO");
+
+            Assert.NotNull(entryLower ?? entryUpper);
         }
 
         [SkippableFact]
         public void Pk7Reader_GetEntry_ShouldReturnNullForNonExistent()
         {
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
+            var archivePath = Require7zArchive();
 
-                using (var reader = new Pk7Reader(tempFile))
-                {
-                    var entry = reader.GetEntry("NONEXISTENT_ENTRY_12345");
+            using var reader = new Pk7Reader(archivePath);
+            var entry = reader.GetEntry("NONEXISTENT_ENTRY_12345");
 
-                    Assert.Null(entry);
-                } // Reader disposed here, before finally block
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
-            {
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+            Assert.Null(entry);
         }
 
         [SkippableFact]
         public void Pk7Reader_Contains_ShouldReturnCorrectBoolean()
         {
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
+            var archivePath = Require7zArchive();
 
-                using (var reader = new Pk7Reader(tempFile))
-                {
-                    var entries = reader.GetEntries().ToList();
+            using var reader = new Pk7Reader(archivePath);
+            var entries = reader.GetEntries().ToList();
 
-                    if (entries.Count > 0)
-                    {
-                        // Should contain an existing entry
-                        Assert.True(reader.Contains(entries[0].Name));
-                    }
-
-                    // Should not contain non-existent entry
-                    Assert.False(reader.Contains("DEFINITELY_NOT_HERE_XYZ"));
-                } // Reader disposed here, before finally block
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
-            {
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+            Assert.True(reader.Contains(entries[0].Name));
+            Assert.False(reader.Contains("DEFINITELY_NOT_HERE_XYZ"));
         }
 
         [SkippableFact]
         public void Pk7Reader_ReadLump_ShouldReturnCorrectData()
         {
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
+            var archivePath = Require7zArchive();
 
-                using (var reader = new Pk7Reader(tempFile))
-                {
-                    var entries = reader.GetEntries().ToList();
+            using var reader = new Pk7Reader(archivePath);
+            var entry = reader.GetEntries().First();
+            var data = reader.ReadLump(entry);
 
-                    if (entries.Count > 0)
-                    {
-                        var entry = entries[0];
-                        var data = reader.ReadLump(entry);
-
-                        Assert.NotNull(data);
-                        // Data length should match the entry's uncompressed size
-                        Assert.Equal(entry.Size, data.Length);
-                    }
-                } // Reader disposed here, before finally block
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
-            {
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+            Assert.NotNull(data);
+            Assert.Equal(entry.Size, data.Length);
         }
 
         [SkippableFact]
         public void Pk7Reader_OpenLump_ShouldReturnReadableStream()
         {
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
+            var archivePath = Require7zArchive();
 
-                using (var reader = new Pk7Reader(tempFile))
-                {
-                    var entries = reader.GetEntries().ToList();
+            using var reader = new Pk7Reader(archivePath);
+            var entry = reader.GetEntries().First();
+            using var stream = reader.OpenLump(entry);
 
-                    if (entries.Count > 0)
-                    {
-                        var entry = entries[0];
-                        using (var stream = reader.OpenLump(entry))
-                        {
-                            Assert.NotNull(stream);
-                            Assert.True(stream.CanRead);
-                            Assert.True(stream.CanSeek); // Returns MemoryStream which supports seeking
-                            Assert.Equal(0, stream.Position); // Should start at beginning
-                        }
-                    }
-                } // Reader disposed here, before finally block
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
-            {
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+            Assert.NotNull(stream);
+            Assert.True(stream.CanRead);
+            Assert.True(stream.CanSeek);
+            Assert.Equal(0, stream.Position);
         }
 
         [SkippableFact]
         public void Pk7Reader_ShouldCategorizeMapEntries()
         {
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
+            var archivePath = Require7zArchive();
 
-                using (var reader = new Pk7Reader(tempFile))
-                {
-                    var mapEntries = reader.GetEntries()
-                        .Where(e => e.FullPath.StartsWith("maps/", StringComparison.OrdinalIgnoreCase))
-                        .ToList();
+            using var reader = new Pk7Reader(archivePath);
+            var mapEntries = reader.GetEntries()
+                .Where(e => e.FullPath.StartsWith("maps/", StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
-                    foreach (var entry in mapEntries)
-                    {
-                        Assert.Equal(LumpCategory.Map, entry.Category);
-                    }
-                } // Reader disposed here, before finally block
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
-            {
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+            Assert.NotEmpty(mapEntries);
+            Assert.All(mapEntries, e => Assert.Equal(LumpCategory.Map, e.Category));
         }
 
         [SkippableFact]
         public void Pk7Reader_ShouldCategorizeSpriteEntries()
         {
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
+            var archivePath = Require7zArchive();
 
-                using (var reader = new Pk7Reader(tempFile))
-                {
-                    var spriteEntries = reader.GetEntries()
-                        .Where(e => e.FullPath.StartsWith("sprites/", StringComparison.OrdinalIgnoreCase))
-                        .ToList();
+            using var reader = new Pk7Reader(archivePath);
+            var spriteEntries = reader.GetEntries()
+                .Where(e => e.FullPath.StartsWith("sprites/", StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
-                    foreach (var entry in spriteEntries)
-                    {
-                        Assert.Equal(LumpCategory.Sprite, entry.Category);
-                    }
-                } // Reader disposed here, before finally block
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
-            {
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+            Assert.NotEmpty(spriteEntries);
+            Assert.All(spriteEntries, e => Assert.Equal(LumpCategory.Sprite, e.Category));
         }
 
         [SkippableFact]
         public void Pk7Reader_ShouldCategorizeByFilename()
         {
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
+            var archivePath = Require7zArchive();
 
-                using (var reader = new Pk7Reader(tempFile))
-                {
-                    // Check for MAPINFO categorization (Definition)
-                    var mapinfoEntry = reader.GetEntries()
-                        .FirstOrDefault(e => e.Name.Equals("MAPINFO", StringComparison.OrdinalIgnoreCase));
+            using var reader = new Pk7Reader(archivePath);
 
-                    if (mapinfoEntry != null)
-                    {
-                        Assert.Equal(LumpCategory.Definition, mapinfoEntry.Category);
-                    }
+            var mapinfoEntry = reader.GetEntries()
+                .FirstOrDefault(e => e.Name.Equals("MAPINFO", StringComparison.OrdinalIgnoreCase));
+            Assert.NotNull(mapinfoEntry);
+            Assert.Equal(LumpCategory.Definition, mapinfoEntry!.Category);
 
-                    // Check for DECORATE categorization (Script)
-                    var decorateEntry = reader.GetEntries()
-                        .FirstOrDefault(e => e.Name.Equals("DECORATE", StringComparison.OrdinalIgnoreCase));
-
-                    if (decorateEntry != null)
-                    {
-                        Assert.Equal(LumpCategory.Script, decorateEntry.Category);
-                    }
-                } // Reader disposed here, before finally block
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
-            {
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+            var decorateEntry = reader.GetEntries()
+                .FirstOrDefault(e => e.Name.Equals("DECORATE", StringComparison.OrdinalIgnoreCase));
+            Assert.NotNull(decorateEntry);
+            Assert.Equal(LumpCategory.Script, decorateEntry!.Category);
         }
 
         [SkippableFact]
         public void Pk7Reader_Dispose_ShouldReleaseResources()
         {
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
+            var archivePath = Require7zArchive();
 
-                var reader = new Pk7Reader(tempFile);
-                var entries = reader.GetEntries().ToList(); // Access entries before dispose
+            var reader = new Pk7Reader(archivePath);
+            var entries = reader.GetEntries().ToList();
 
-                reader.Dispose();
+            reader.Dispose();
 
-                // After dispose, we should be able to delete the file (resources released)
-                // Note: This may vary based on SharpCompress implementation
-                // The test verifies Dispose() doesn't throw
-                Assert.True(true); // If we get here, Dispose succeeded
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
-            {
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+            // If we get here, Dispose succeeded without throwing
+            Assert.NotEmpty(entries);
         }
 
         [SkippableFact]
         public void Pk7Reader_GetEntriesByCategory_ShouldFilterCorrectly()
         {
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
+            var archivePath = Require7zArchive();
 
-                using (var reader = new Pk7Reader(tempFile))
-                {
-                    var sprites = reader.GetEntriesByCategory(LumpCategory.Sprite).ToList();
+            using var reader = new Pk7Reader(archivePath);
+            var sprites = reader.GetEntriesByCategory(LumpCategory.Sprite).ToList();
 
-                    // All returned entries should have Sprite category
-                    Assert.All(sprites, e => Assert.Equal(LumpCategory.Sprite, e.Category));
-                } // Reader disposed here, before finally block
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
-            {
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+            Assert.NotEmpty(sprites);
+            Assert.All(sprites, e => Assert.Equal(LumpCategory.Sprite, e.Category));
         }
 
         [SkippableFact]
         public void Pk7Reader_GetEntriesInFolder_ShouldFilterByPath()
         {
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
+            var archivePath = Require7zArchive();
 
-                using (var reader = new Pk7Reader(tempFile))
-                {
-                    var spritesInFolder = reader.GetEntriesInFolder("sprites").ToList();
+            using var reader = new Pk7Reader(archivePath);
+            var spritesInFolder = reader.GetEntriesInFolder("sprites").ToList();
 
-                    // All returned entries should be in sprites folder
-                    Assert.All(spritesInFolder, e =>
-                        Assert.StartsWith("sprites/", e.FullPath.ToLowerInvariant()));
-                } // Reader disposed here, before finally block
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
-            {
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+            Assert.NotEmpty(spritesInFolder);
+            Assert.All(spritesInFolder, e =>
+                Assert.StartsWith("sprites/", e.FullPath.ToLowerInvariant()));
         }
 
         [SkippableFact]
         public void Pk7Reader_GetEmbeddedWads_ShouldFindWadFiles()
         {
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
+            var archivePath = Require7zArchive();
 
-                using (var reader = new Pk7Reader(tempFile))
-                {
-                    var wads = reader.GetEmbeddedWads().ToList();
+            using var reader = new Pk7Reader(archivePath);
+            var wads = reader.GetEmbeddedWads().ToList();
 
-                    // All WAD paths should end with .wad
-                    Assert.All(wads, w => Assert.EndsWith(".wad", w, StringComparison.OrdinalIgnoreCase));
-                } // Reader disposed here, before finally block
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
-            {
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+            Assert.NotEmpty(wads);
+            Assert.All(wads, w => Assert.EndsWith(".wad", w, StringComparison.OrdinalIgnoreCase));
         }
 
         [SkippableFact]
         public void Pk7Reader_ShouldTruncateLongNames()
         {
-            // This test verifies the lump name truncation logic
-            // Names longer than 8 characters should be truncated
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
+            var archivePath = Require7zArchive();
 
-                using (var reader = new Pk7Reader(tempFile))
-                {
-                    var entries = reader.GetEntries().ToList();
+            using var reader = new Pk7Reader(archivePath);
+            var entries = reader.GetEntries().ToList();
 
-                    // All lump names should be 8 characters or less
-                    Assert.All(entries, e => Assert.True(e.Name.Length <= 8,
-                        $"Entry name '{e.Name}' exceeds 8 characters"));
-                } // Reader disposed here, before finally block
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
-            {
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+            Assert.All(entries, e => Assert.True(e.Name.Length <= 8,
+                $"Entry name '{e.Name}' exceeds 8 characters"));
         }
 
         [SkippableFact]
         public void Pk7Reader_ReadLump_ShouldThrowForInvalidEntry()
         {
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
+            var archivePath = Require7zArchive();
 
-                using (var reader = new Pk7Reader(tempFile))
-                {
-                    // Create a fake entry that doesn't exist in the archive
-                    var fakeEntry = new LumpEntry
-                    {
-                        Name = "FAKE",
-                        FullPath = "nonexistent/fake_entry.txt",
-                        Size = 100,
-                        CompressedSize = 50,
-                        Category = LumpCategory.Unknown
-                    };
+            using var reader = new Pk7Reader(archivePath);
 
-                    Assert.Throws<InvalidOperationException>(() => reader.ReadLump(fakeEntry));
-                } // Reader disposed here, before finally block
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
+            var fakeEntry = new LumpEntry
             {
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+                Name = "FAKE",
+                FullPath = "nonexistent/fake_entry.txt",
+                Size = 100,
+                CompressedSize = 50,
+                Category = LumpCategory.Unknown
+            };
+
+            Assert.Throws<InvalidOperationException>(() => reader.ReadLump(fakeEntry));
         }
 
         [SkippableFact]
         public void Pk7Reader_OpenLump_ShouldThrowForInvalidEntry()
         {
-            var tempFile = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.7z");
-            try
-            {
-                File.WriteAllBytes(tempFile, Test7zArchiveData);
+            var archivePath = Require7zArchive();
 
-                using (var reader = new Pk7Reader(tempFile))
-                {
-                    // Create a fake entry that doesn't exist in the archive
-                    var fakeEntry = new LumpEntry
-                    {
-                        Name = "FAKE",
-                        FullPath = "nonexistent/fake_entry.txt",
-                        Size = 100,
-                        CompressedSize = 50,
-                        Category = LumpCategory.Unknown
-                    };
+            using var reader = new Pk7Reader(archivePath);
 
-                    Assert.Throws<InvalidOperationException>(() => reader.OpenLump(fakeEntry));
-                } // Reader disposed here, before finally block
-            }
-            catch (Exception ex) when (ex.Message.Contains("archive") || ex.Message.Contains("7z") || ex is InvalidOperationException)
+            var fakeEntry = new LumpEntry
             {
-                Skip.If(true, "Unable to create valid 7z test archive: " + ex.Message);
-            }
-            finally
-            {
-                SafeDeleteTempFile(tempFile);
-            }
+                Name = "FAKE",
+                FullPath = "nonexistent/fake_entry.txt",
+                Size = 100,
+                CompressedSize = 50,
+                Category = LumpCategory.Unknown
+            };
+
+            Assert.Throws<InvalidOperationException>(() => reader.OpenLump(fakeEntry));
         }
 
         #endregion

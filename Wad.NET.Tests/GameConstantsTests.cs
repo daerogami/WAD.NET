@@ -3,7 +3,7 @@ using WAD.NET.Definitions;
 using WAD.NET.Definitions.GameData;
 using Xunit;
 
-namespace Wad.NET.Tests
+namespace WAD.NET.Tests
 {
     public class GameConstantsTests
     {
