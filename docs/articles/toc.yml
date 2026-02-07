@@ -1,0 +1,24 @@
+- name: Getting Started
+  href: getting-started.md
+- name: Architecture
+  href: architecture.md
+- name: Reading Archives
+  href: reading-archives.md
+- name: Working with Maps
+  href: working-with-maps.md
+- name: Composite Archives
+  href: composite-archives.md
+- name: Building WADs & PK3s
+  href: building-wads.md
+- name: Validation
+  href: validation.md
+- name: ZScript & DECORATE Parser
+  href: zscript-parser.md
+- name: Game Databases
+  href: game-databases.md
+- name: Definition Parsers
+  href: definition-parsers.md
+- name: Rendering
+  href: rendering.md
+- name: Compatibility Detection
+  href: compatibility.md

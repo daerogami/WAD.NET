@@ -1,0 +1,5 @@
+- name: Guide
+  href: articles/
+- name: API Reference
+  href: api/
+  homepage: api/index.md
